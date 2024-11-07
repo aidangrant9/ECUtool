@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.15...3.31)
 
-#include("cmake/gitcheck.cmake")
-
 project(ECUtool VERSION 0.1.0
                 DESCRIPTION "A GUI application for reverse-engineering ECUs"
                 LANGUAGES CXX)
@@ -15,4 +13,4 @@ add_subdirectory(libs/wxWidgets)
 
 target_include_directories(ecutool PRIVATE "./include")
 
-target_link_libraries(ecutool wx::net wx::core wx::base)
+target_link_libraries(ecutool wx::core wx::base)
