@@ -1,0 +1,1 @@
+target_sources(ecutool PUBLIC main.cpp)
