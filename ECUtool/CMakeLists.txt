@@ -1,1 +1,1 @@
-target_sources(ecutool PUBLIC main.cpp)
+target_sources(ecutoolapp PUBLIC main.cpp)
