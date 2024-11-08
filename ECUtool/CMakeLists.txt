@@ -1,1 +1,3 @@
-target_sources(ecutoolapp PUBLIC main.cpp)
+target_sources(ecutoolapp PUBLIC "main.cpp")
+
+add_subdirectory(ui)
