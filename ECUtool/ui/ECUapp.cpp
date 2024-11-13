@@ -3,7 +3,7 @@
 
 bool ECUapp::OnInit()
 {
-	RootFrame* rootFrame = new RootFrame();
+	RootFrame *rootFrame = new RootFrame();
 	rootFrame->Show(true);
 	return true;
 }
