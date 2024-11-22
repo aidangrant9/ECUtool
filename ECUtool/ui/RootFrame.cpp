@@ -5,28 +5,30 @@
 RootFrame::RootFrame()
 	: wxFrame(nullptr, wxID_ANY, "ECUtool")
 {
+	// Add icon to the window
 	wxBitmapBundle ecuBitmapBundle = wxBitmapBundle::FromSVG(ECU_ICON, wxSize(50, 50));
 	wxIcon ecuIcon = ecuBitmapBundle.GetIcon(ecuBitmapBundle.GetDefaultSize());
 	SetIcon(ecuIcon);
 
+	// Create help menu and add predefined about button
 	wxMenu *menuHelp = new wxMenu();
 	menuHelp->Append(wxID_ABOUT);
 
+	Bind(wxEVT_MENU, &RootFrame::OnAbout, this, wxID_ABOUT);
+
+	// Add menu bar
 	wxMenuBar *menuBar = new wxMenuBar();
 	menuBar->Append(menuHelp, "Help");
-
-	wxToolBar *toolbar = this->CreateToolBar(wxTB_HORIZONTAL | wxTB_TEXT, wxID_ANY, "MainToolbar");
-
-	wxBitmapBundle connectIcon = wxBitmapBundle::FromSVG(ECU_ICON_CONNECT, wxSize(30,30));
-
-	wxToolBarToolBase* connectButton = toolbar->AddTool(wxID_ANY, "Connect", connectIcon, "Connect to ECU", wxITEM_NORMAL);
-
-	toolbar->Realize();
-
-	toolbar->Show();
 	SetMenuBar(menuBar);
-	
-	Bind(wxEVT_MENU, &RootFrame::OnAbout, this, wxID_ABOUT);
+
+	// Initialise toolbar and add connect tool
+	wxToolBar *toolbar = new wxToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_DEFAULT_STYLE | wxTB_TEXT);
+	wxBitmapBundle connectIcon = wxBitmapBundle::FromSVG(ECU_ICON_CONNECT, wxSize(25, 25));
+	toolbar->AddTool(wxID_ANY, "Connect", connectIcon, "Start connection to an ECU", wxITEM_NORMAL);
+	toolbar->Realize();
+	toolbar->Show();
+
+
 }
 
 void RootFrame::OnAbout(wxCommandEvent &event)

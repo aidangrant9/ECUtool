@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15...3.31)
+cmake_minimum_required(VERSION 3.15)
 
 project(ECUtool VERSION 0.1.0
                 DESCRIPTION "A GUI application for reverse-engineering ECUs"
