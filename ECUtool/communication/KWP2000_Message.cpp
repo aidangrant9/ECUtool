@@ -1,3 +1,5 @@
+#include <sstream>
+#include<iomanip>
 #include "KWP2000_Message.hpp"
 #include "VecStream.hpp"
 
@@ -65,5 +67,37 @@ uint8_t KWP2000Message::calcChecksum() {
 }
 
 std::string KWP2000Message::print() {
-	return "KWP2000Message stub";
+	std::stringstream ret;
+
+	ret << std::uppercase << std::setw(2) << std::setfill('0') << std::hex;
+
+	if (isValid)
+		ret << "VALID ";
+	else
+		ret << "INVALID ";
+	
+	if (mode > 1)
+	{
+		if (mode == 2)
+		{
+			ret << "(PHY ";
+		}
+		else
+		{
+			ret << "(FUN ";
+		}
+		ret << +source.value() << " -> " << +target.value() << ")  ";
+	}
+
+	ret << "[ ";
+
+	for (uint8_t v : payload)
+	{
+		ret << +v << " ";
+	}
+
+	ret << "]  ";
+	ret << +checksum;
+	
+	return ret.str();
 }
