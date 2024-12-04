@@ -11,6 +11,15 @@ add_executable(ecutoolapp WIN32)
 set_property(TARGET ecutoolapp PROPERTY CXX_STANDARD 20)
 set_property(TARGET ecutoolapp PROPERTY CXX_STANDARD_REQUIRED TRUE)
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if(MSVC)
+        target_link_options(ecutoolapp PRIVATE $<$<CONFIG:Debug>:/INCREMENTAL>)
+        target_compile_options(ecutoolapp PRIVATE $<$<CONFIG:Debug>:/ZI>)
+    else()
+        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
+    endif()
+endif()
+
 add_subdirectory(ECUtool)
 add_subdirectory(libs/wxWidgets)
 
