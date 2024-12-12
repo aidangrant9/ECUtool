@@ -47,7 +47,7 @@ void KLineConnection::connect()
 		return;
 	}
 
-	dcb.BaudRate = baudRate;
+	dcb.BaudRate = this->baudRate;
 	dcb.ByteSize = 8;
 	dcb.Parity = ODDPARITY;
 	dcb.StopBits = ONESTOPBIT;
@@ -79,16 +79,20 @@ void KLineConnection::poll()
 
 
 		defaults:
-		p1: 20
-		p2: 50
-		p3: 5000
-		p4: 20
+		p1: 0
+		p2: 25
+		p3: 55
+		p4: 5
 
 		Timings in ms
 	*/
 
-	COMMTIMEOUTS readTimeouts = { 20, 1, 0, 1, 0 };
+	PurgeComm(hCom, PURGE_RXCLEAR | PURGE_TXCLEAR);
+
+
+	int p1 = 0, p2 = 25, p3 = 55, p4 = 5;
 	
+	COMMTIMEOUTS readTimeouts = { p1, 1, 0, 1, 0 };
 
 	while (true)
 	{
@@ -100,10 +104,19 @@ void KLineConnection::poll()
 			writeQueue.pop_back();
 			DWORD bytesWritten = 0;
 
+			// No send delay
+			WriteFile(hCom, toSend.data(), toSend.size(), &bytesWritten, 0);
+
+			/*
 			for (uint8_t b : toSend)
 			{
 				WriteFile(hCom, &b, 1, &bytesWritten, 0);
+				std::this_thread::sleep_for(std::chrono::milliseconds(p4));
 			}
+			*/
+			
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(p2));
 		}
 		writeMutex.unlock();
 
@@ -111,8 +124,6 @@ void KLineConnection::poll()
 		{
 			std::cerr << "SetCommTimeouts failed with err " << GetLastError() << std::endl;;
 		}
-
-		std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
 		std::vector<uint8_t> messageRead{};
 
@@ -140,6 +151,6 @@ void KLineConnection::poll()
 			this->doCallbacks(messageRead);
 		}
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		std::this_thread::sleep_for(std::chrono::milliseconds(p3));
 	}
 }

@@ -86,7 +86,7 @@ std::string KWP2000Message::print() {
 		{
 			ret << "(FUN ";
 		}
-		ret << +source.value() << " -> " << +target.value() << ")  ";
+		ret << +source.value_or(0) << " -> " << +target.value_or(0) << ")  ";
 	}
 
 	ret << "[ ";

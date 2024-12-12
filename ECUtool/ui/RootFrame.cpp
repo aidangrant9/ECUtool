@@ -4,6 +4,9 @@
 #include "../communication/KWP2000_Message.hpp"
 #include "ConnectFrame.hpp"
 #include <functional>
+#include <sstream>
+#include<iomanip>
+
 
 
 RootFrame::RootFrame(const wxString &title, const wxPoint &position, const wxSize &size)
@@ -94,16 +97,28 @@ void RootFrame::OnConnectFrameClose()
 		if (connection->connected)
 		{
 			connection->registerCallback(std::bind(&RootFrame::OnMsgRecieve, this, std::placeholders::_1));
-			connection->writeMessage(std::vector<uint8_t>{0b10000000, 0x14, 0x00, 0x02, 0x10, 0x01, 0xa7 });
+			connection->writeMessage(std::vector<uint8_t>{0b10000000, 0x14, 0x00, 0x20, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0x06, 0x07, 0x08, 0x09
+				,0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+				0x28, 0x29, 0x30, 0x31, 0x32, 0xce });
 		}
 	}
 }
 
 void RootFrame::OnMsgRecieve(std::vector<uint8_t> *msg)
 {
+	std::stringstream str;
+
+	str << std::uppercase << std::setw(2) << std::setfill('0') << std::hex;
+
+	for (uint8_t i : *msg)
+	{
+		str << +i << " ";
+	}
+
 	KWP2000Message m(*msg);
 	wxLogStatus("%s", m.print().c_str());
-	wxLogStatus("%x", m.calcChecksum());
+	wxLogStatus("RAW %s", str.str().c_str());
+	wxLogStatus("CHECKSUM %x\n", m.calcChecksum());
 }
 
 void RootFrame::OnAbout(wxCommandEvent &event)
