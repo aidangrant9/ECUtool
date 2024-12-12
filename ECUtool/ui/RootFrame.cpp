@@ -2,6 +2,8 @@
 #include "icons/icons.hpp"
 #include <format>
 #include "../communication/KWP2000_Message.hpp"
+#include "ConnectFrame.hpp"
+#include <functional>
 
 
 RootFrame::RootFrame(const wxString &title, const wxPoint &position, const wxSize &size)
@@ -44,9 +46,15 @@ RootFrame::RootFrame(const wxString &title, const wxPoint &position, const wxSiz
 	wxToolBar *toolbar = new wxToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_DEFAULT_STYLE | wxTB_TEXT);
 	sizer->Add(toolbar, 0, wxEXPAND);
 	wxBitmapBundle connectIcon = wxBitmapBundle::FromSVG(ECU_ICON_CONNECT, wxSize(25, 25));
-	toolbar->AddTool(wxID_ANY, "Connect", connectIcon, "Start connection to an ECU", wxITEM_NORMAL);
+
+	wxWindowID connectButtonID = wxWindow::NewControlId();
+	toolbar->AddTool(connectButtonID, "Connect", connectIcon, "Start connection to an ECU", wxITEM_NORMAL);
 	toolbar->Realize();
 	toolbar->Show();
+
+	Bind(wxEVT_TOOL, &RootFrame::OnConnectButton, this, connectButtonID);
+
+
 
 	// Create main control panel and sizer
 	wxPanel *panel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxSize(600,400));
@@ -60,142 +68,42 @@ RootFrame::RootFrame(const wxString &title, const wxPoint &position, const wxSiz
 
 	// Register and set textctrl as log target
 	wxLogTextCtrl *logTextCtrl = new wxLogTextCtrl(outputTextCtrl);
-	wxLog::SetActiveTarget(logTextCtrl);
+	wxLog::SetActiveTarget(logTextCtrl);	
+}
 
-	std::vector<uint8_t> g{ 0b11010000, 0x23, 0x24, 0xA1,0xF1,0xA1,0xA1,0xA1,0xA1,0xA1,0xB2,0xA1,0xA1,0xA1,0xA1,0xA1,0xA1,0xA1,0xA1, 0x93 };
-	KWP2000Message m(g);
-	std::cout << m.print();
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
+void RootFrame::OnConnectButton(wxCommandEvent &event)
+{
+	if (this->connectFrame == nullptr)
+	{
+		this->connectFrame = new ConnectFrame(this, wxID_ANY, &this->connection);
+		this->connectFrame->Show();
+	}
+	else
+	{
+		this->connectFrame->Show();
+	}
+}
 
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	wxLogStatus("%s\n", m.print().c_str());
-	
+void RootFrame::OnConnectFrameClose()
+{
+	this->connectFrame = nullptr;
+
+	if (this->connection != nullptr)
+	{
+		connection->connect();
+		if (connection->connected)
+		{
+			connection->registerCallback(std::bind(&RootFrame::OnMsgRecieve, this, std::placeholders::_1));
+			connection->writeMessage(std::vector<uint8_t>{0b10000000, 0x14, 0x00, 0x02, 0x10, 0x01, 0xa7 });
+		}
+	}
+}
+
+void RootFrame::OnMsgRecieve(std::vector<uint8_t> *msg)
+{
+	KWP2000Message m(*msg);
+	wxLogStatus("%s", m.print().c_str());
+	wxLogStatus("%x", m.calcChecksum());
 }
 
 void RootFrame::OnAbout(wxCommandEvent &event)

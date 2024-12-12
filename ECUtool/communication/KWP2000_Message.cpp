@@ -91,7 +91,7 @@ std::string KWP2000Message::print() {
 
 	ret << "[ ";
 
-	for (uint8_t v : payload)
+	for (uint8_t &v : payload)
 	{
 		ret << +v << " ";
 	}

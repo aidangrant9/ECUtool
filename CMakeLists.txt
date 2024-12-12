@@ -23,6 +23,6 @@ endif()
 add_subdirectory(ECUtool)
 add_subdirectory(libs/wxWidgets)
 
-target_link_libraries(ecutoolapp wx::core wx::base)
+target_link_libraries(ecutoolapp PRIVATE OneCore wx::core wx::base)
 
 target_compile_definitions(ecutoolapp PRIVATE ECUtool_VERSION_STRING="${ECUtool_VERSION_MAJOR}.${ECUtool_VERSION_MINOR}.${ECUtool_VERSION_PATCH}")
