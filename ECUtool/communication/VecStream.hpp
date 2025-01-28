@@ -16,7 +16,7 @@ private:
 	size_t head;
 
 public:
-	VecStream(const std::vector<T> &data) : data(data), head(0) {}
+	VecStream(const std::vector<T> &data) : data{ data }, head{ 0 } {}
 
 	T next()
 	{

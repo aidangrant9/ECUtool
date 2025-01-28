@@ -1,2 +1,8 @@
 out/
 .vs/
+.vscode/
+.idea/
+ACKNOWLEDGEMENTS
+CMakeSettings.json
+build/
+resources/

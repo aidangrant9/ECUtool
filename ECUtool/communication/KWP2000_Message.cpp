@@ -3,9 +3,9 @@
 #include "KWP2000_Message.hpp"
 #include "VecStream.hpp"
 
-KWP2000Message::KWP2000Message(std::vector<uint8_t> &rawMessage)
+KWP2000Message::KWP2000Message(std::vector<uint8_t> &rawMessage) : rawMessage
 {
-	isValid = parse(rawMessage) && (calcChecksum() == checksum);
+	
 }
 
 bool KWP2000Message::parse(std::vector<uint8_t> &rawMessage)
@@ -86,7 +86,7 @@ std::string KWP2000Message::print() {
 		{
 			ret << "(FUN ";
 		}
-		ret << +source.value_or(0) << " -> " << +target.value_or(0) << ")  ";
+		ret << +source.value_or(0xFF) << " -> " << +target.value_or(0xFF) << ")  ";
 	}
 
 	ret << "[ ";
@@ -100,4 +100,10 @@ std::string KWP2000Message::print() {
 	ret << +checksum;
 	
 	return ret.str();
+}
+
+
+KWP2000Message::~KWP2000Message()
+{
+
 }

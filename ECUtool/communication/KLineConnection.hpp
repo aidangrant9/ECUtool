@@ -3,24 +3,30 @@
 #include "SerialConnection.hpp"
 
 #include <string>
-#include <Windows.h>
 #include <thread>
+#include <atomic>
 
 class KLineConnection : public SerialConnection
 {
-private:
-	HANDLE hCom = NULL;
-	std::string portName;
-	int baudRate;
+protected:
+	enum class InitMode
+	{
+		CARB = 1,
+		FiveBaud,
+		FastInit,
+	};
+
+	InitMode mode;
+
 	std::thread pollThread;
-
-	virtual void poll();
-
+	struct PlatformSpecifics;
+	virtual void poll(PlatformSpecifics);
 public:
-	KLineConnection(std::string portName, int baudRate);
-	~KLineConnection();
+	KLineConnection(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, InitMode mode);
+	~KLineConnection() override;
 
-	virtual void connect() override;
-	virtual void disconnect() override;
+	virtual int connect() override;
+	virtual int disconnect() override;
 };
 
+ 

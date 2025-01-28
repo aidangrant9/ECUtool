@@ -14,6 +14,8 @@ public:
 
 private:
 	void OnAbout(wxCommandEvent &event);
+	void OnSDS(wxCommandEvent &event);
+	void OnTR(wxCommandEvent &event);
 	void OnConnectButton(wxCommandEvent &event);
 
 	SerialConnection *connection = nullptr;

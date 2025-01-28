@@ -28,9 +28,18 @@ RootFrame::RootFrame(const wxString &title, const wxPoint &position, const wxSiz
 
 	// Create command menu
 	wxMenu *menuCommands = new wxMenu();
-	wxMenuItem *exampleCommand = new wxMenuItem(menuCommands, -2, "Command example", wxEmptyString, wxITEM_NORMAL, nullptr);
+	wxWindowID sdsID = wxWindow::NewControlId();
+	wxMenuItem *sds = new wxMenuItem(menuCommands, sdsID, "StartDiagnosticSession", "Example", wxITEM_NORMAL, nullptr);
+	menuCommands->Append(sds);
+
+	wxWindowID trID = wxWindow::NewControlId();
+	wxMenuItem *tr = new wxMenuItem(menuCommands, trID, "TesterPresent", "Example", wxITEM_NORMAL, nullptr);
+	menuCommands->Append(tr);
+
 
 	Bind(wxEVT_MENU, &RootFrame::OnAbout, this, wxID_ABOUT);
+	Bind(wxEVT_MENU, &RootFrame::OnSDS, this, sdsID);
+	Bind(wxEVT_MENU, &RootFrame::OnTR, this, trID);
 
 	// Add menu bar
 	wxMenuBar *menuBar = new wxMenuBar();
@@ -97,9 +106,6 @@ void RootFrame::OnConnectFrameClose()
 		if (connection->connected)
 		{
 			connection->registerCallback(std::bind(&RootFrame::OnMsgRecieve, this, std::placeholders::_1));
-			connection->writeMessage(std::vector<uint8_t>{0b10000000, 0x14, 0x00, 0x20, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0x06, 0x07, 0x08, 0x09
-				,0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
-				0x28, 0x29, 0x30, 0x31, 0x32, 0xce });
 		}
 	}
 }
@@ -125,4 +131,20 @@ void RootFrame::OnAbout(wxCommandEvent &event)
 {
 	wxMessageBox(std::format("ECUtool\nVersion {}", ECUtool_VERSION_STRING),
 		"About", wxOK | wxICON_INFORMATION);
+}
+
+void RootFrame::OnSDS(wxCommandEvent &event)
+{
+	if (this->connection != nullptr)
+	{
+		connection->writeMessage(std::vector<uint8_t>{0b10000000, 0x20, 0xf7, 0x02, 0x10, 0x00, 0xd6});
+	}
+}
+
+void RootFrame::OnTR(wxCommandEvent &event)
+{
+	if (this->connection != nullptr)
+	{
+		connection->writeMessage(std::vector<uint8_t>{0b10000000, 0x20, 0xf7, 0x01, 0x3E, 0xe9});
+	}
 }

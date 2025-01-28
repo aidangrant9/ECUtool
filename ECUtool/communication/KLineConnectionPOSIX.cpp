@@ -3,7 +3,8 @@
 #include <iostream>
 #include <chrono>
 
-KLineConnection::KLineConnection(std::string portName, int baudRate) : portName(portName), baudRate(baudRate)
+KLineConnection::KLineConnection(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, InitMode mode) 
+	: portName{portName}, baudRate{baudRate}, byteSize{byteSize}, parity{parity}, stopBits{stopBits}, mode{mode}
 {
 }
 
@@ -49,7 +50,7 @@ void KLineConnection::connect()
 
 	dcb.BaudRate = this->baudRate;
 	dcb.ByteSize = 8;
-	dcb.Parity = ODDPARITY;
+	dcb.Parity = NOPARITY;
 	dcb.StopBits = ONESTOPBIT;
 
 	if (!SetCommState(this->hCom, &dcb))
