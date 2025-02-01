@@ -1,24 +1,23 @@
 #pragma once
 
-/*
-	Abstract class for serial connections
-*/
-
 #include <vector>
 #include <cstdint>
 #include <queue>
 #include <mutex>
-#include <optional>
 #include <functional>
-#include <unordered_map>
+
+/*
+	Abstract class for serial connections
+*/
 
 class SerialConnection
 {
 public:
 	enum class ConnectionStatus
 	{
-		Open,
-		Closed
+		Disconnected,
+		Connected,
+		Error,
 	};
 
 	enum class StopBits
@@ -42,71 +41,108 @@ public:
 	virtual int write(const std::vector<uint8_t>& toWrite)
 	{
 		std::lock_guard<std::mutex> lock{ writeMutex };
-		writeQueue.push_back(toWrite);
+		writeQueue.push_front(toWrite);
 	}
 
-	// Returns latest message or nullopt
-	virtual std::optional<std::vector<uint8_t>&> peek()
+	void registerDataCallback(std::function<void(const std::vector<uint8_t> &data)> &cb)
 	{
-		std::lock_guard<std::mutex> lock{ readMutex };
-		if (readQueue.empty())
+		dataCallback = cb;
+	}
+
+	void registerErrorCallback(std::function<void(const std::string &error)> &cb)
+	{
+		errorCallback = cb;
+	}
+
+	void registerStatusCallback(std::function<void(const ConnectionStatus status)> &cb)
+	{
+		statusCallback = cb;
+	}
+
+	bool notifyDataCallback(const std::vector<uint8_t> &data)
+	{
+		try
 		{
-			return std::nullopt;
+			dataCallback(data);
+			return true;
 		}
-		return readQueue.front();
-	}
-
-	// Returns ID of function callback needed to deregister callback
-	virtual uint64_t registerCallback(const std::function<void(std::vector<uint8_t>)> cb)
-	{
-		std::lock_guard<std::mutex> lock{ cbMutex };
-		callbacks[callbackID++] = cb;
-	}
-
-	// Deregisters callback
-	virtual int deregisterCallback(const uint64_t id)
-	{
-		std::lock_guard<std::mutex> lock{ cbMutex };
-		callbacks.erase(id);
-	}
-
-	virtual int notifyCallbacks(const std::vector<uint8_t> &msg)
-	{
-		std::lock_guard<std::mutex> lock{ cbMutex };
-		for (auto & [id, cb] : callbacks)
+		catch (std::bad_function_call e)
 		{
-			cb(msg);
+			return false;
 		}
 	}
 
-	virtual int connect() = 0;
-	virtual int disconnect() = 0;
-	virtual ConnectionStatus status() = 0;
+	bool notifyErrorCallback(const std::string &error)
+	{
+		try
+		{
+			errorCallback(error);
+			return true;
+		}
+		catch (std::bad_function_call e)
+		{
+			return false;
+		}
+	}
 
+	bool notifyStatusCallback(const ConnectionStatus status)
+	{
+		try
+		{
+			statusCallback(status);
+			return true;
+		}
+		catch (std::bad_function_call e)
+		{
+			return false;
+		}
+	}
 
+	/// <summary>
+	/// Changes the internal connection status and notifies listeners
+	/// </summary>
+	/// <param name="status">New connection status</param>
+	/// <returns>Callback run successfully</returns>
+	bool changeConnectionStatus(const ConnectionStatus status)
+	{
+		this->connectionStatus = status;
+		return notifyStatusCallback(status);
+	}
+
+	/// <summary>
+	/// Changes the internal connection status and produces an error message
+	/// </summary>
+	/// <param name="status">New connection status</param>
+	/// <param name="errorMessage">Error message for callback</param>
+	/// <returns>Callbacks run successfully</returns>
+	bool changeConnectionStatus(const ConnectionStatus status, const std::string errorMessage)
+	{
+		return changeConnectionStatus(status) && notifyErrorCallback(errorMessage);
+	}
+
+	virtual void connect() = 0;
+	virtual void disconnect() = 0;
 protected:
 	SerialConnection(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits) :
-		portName{portName}, baudRate{baudRate}, byteSize{byteSize}, parity{parity}, stopBits{stopBits}, connectionStatus{ConnectionStatus::Closed}
+		portName{portName}, baudRate{baudRate}, byteSize{byteSize}, parity{parity}, stopBits{stopBits}
 	{
 	}
 
-	std::unordered_map<uint64_t, std::function<void(std::vector<uint8_t>)>> callbacks{};
-	uint64_t callbackID = 0;
+	ConnectionStatus connectionStatus{ ConnectionStatus::Disconnected };
+
+	// Callbacks for GUI
+	std::function<void(const std::vector<uint8_t> &data)>  dataCallback{};
+	std::function<void(const std::string &error)>          errorCallback{};
+	std::function<void(const ConnectionStatus     status)> statusCallback{};
 
 	std::deque<std::vector<uint8_t>> writeQueue{};
-	std::deque<std::vector<uint8_t>> readQueue{};
-
-	std::mutex writeMutex;
-	std::mutex readMutex;
-	std::mutex cbMutex;
-
-	ConnectionStatus connectionStatus;
+	std::mutex writeMutex{};
 
 	// Platform agnostic port configuration
-	std::string portName;
-	size_t baudRate;
-	size_t byteSize;
-	Parity parity;
-	StopBits stopBits;
+	std::string portName{};
+	size_t baudRate{};
+	size_t byteSize{};
+	Parity parity{};
+	StopBits stopBits{};
 };
 

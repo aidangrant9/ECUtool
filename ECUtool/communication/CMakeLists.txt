@@ -1,1 +1,1 @@
-target_sources(ecutoolapp PRIVATE "KWP2000_Message.cpp" "KLineConnectionWIN32.cpp")
+target_sources(ecutoolapp PRIVATE "KWP2000_Message.cpp" "KLineWindows.cpp")

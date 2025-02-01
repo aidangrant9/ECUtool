@@ -59,11 +59,11 @@ void KLineConnection::connect()
 		return;
 	}
 
-	this->pollThread = std::thread(&KLineConnection::poll, this);
+	this->workThread = std::thread(&KLineConnection::poll, this);
 	this->connected = 1;
 }
 
-void KLineConnection::poll()
+void poll()
 {
 	/*
 		Timing restrictions
