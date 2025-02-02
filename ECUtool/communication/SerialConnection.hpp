@@ -36,9 +36,9 @@ public:
 		Space,
 	};
 
-	virtual ~SerialConnection() = 0;
+	virtual ~SerialConnection() = default;
 
-	virtual int write(const std::vector<uint8_t>& toWrite)
+	virtual void write(const std::vector<uint8_t>& toWrite)
 	{
 		std::lock_guard<std::mutex> lock{ writeMutex };
 		writeQueue.push_front(toWrite);

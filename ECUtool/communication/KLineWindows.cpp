@@ -35,9 +35,7 @@ void KLineWindows::disconnect()
 
 void KLineWindows::connect()
 {
-	std::wstring comName = std::wstring(portName.begin(), portName.end());
-
-	hCom = CreateFile(comName.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+	hCom = CreateFile(portName.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 
 	if (hCom == INVALID_HANDLE_VALUE)
 	{
@@ -70,7 +68,7 @@ bool KLineWindows::initialise()
 	if (!SetCommTimeouts(hCom, &readTimeouts))
 	{
 		changeConnectionStatus(ConnectionStatus::Error, "Failed to set com timeouts");
-		return;
+		return false;
 	}
 
 
@@ -114,7 +112,8 @@ bool KLineWindows::initialise()
 
 		uint8_t tgt = targetAddress.value();
 		uint8_t src = sourceAddress.value();
-		uint8_t cs{ fmt + tgt + src + 0x81 };
+		uint8_t cs{};
+		cs += fmt + tgt + src + 0x81;
 
 		std::vector<uint8_t> startCommunicationRequest{ fmt, tgt, src, 0x81, cs };
 		
