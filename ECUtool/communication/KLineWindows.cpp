@@ -20,7 +20,17 @@ KLineWindows::~KLineWindows()
 
 void KLineWindows::disconnect()
 {
-	// TODO
+	// Stop work thread
+	workThread.request_stop();
+	workThread.join();
+
+	if (hCom != INVALID_HANDLE_VALUE)
+	{
+		if (!CloseHandle(hCom))
+		{
+			changeConnectionStatus(ConnectionStatus::Error, "Failed to close Windows file handle");
+		}
+	}
 }
 
 void KLineWindows::connect()
@@ -54,7 +64,7 @@ bool KLineWindows::initialise()
 		return false;
 	}
 
-	COMMTIMEOUTS readTimeouts = { 20, 0, 0, p4, 0 };
+	COMMTIMEOUTS readTimeouts = { p1, 0, 0, p4, 0 };
 
 	// Configure port timeouts
 	if (!SetCommTimeouts(hCom, &readTimeouts))
@@ -372,7 +382,7 @@ void KLineWindows::poll()
 		return;
 	}
 
-	COMMTIMEOUTS readTimeouts = { 20, 0, 0, p4, 0 };
+	COMMTIMEOUTS readTimeouts = { p1, 0, 0, p4, 0 };
 
 	// Configure port timeouts
 	if (!SetCommTimeouts(hCom, &readTimeouts))
