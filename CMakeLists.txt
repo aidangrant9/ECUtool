@@ -4,24 +4,21 @@ project(ECUtool VERSION 0.2.0
                 DESCRIPTION "A GUI application for reverse-engineering ECUs"
                 LANGUAGES CXX)
 
-add_executable(ecutoolapp)
-
 include(vcpkg/scripts/buildsystems/vcpkg.cmake)
 
+
+set(CMAKE_AUTOMOC ON)
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 qt_standard_project_setup()
 
-set_property(TARGET ecutoolapp PROPERTY CXX_STANDARD 20)
-set_property(TARGET ecutoolapp PROPERTY CXX_STANDARD_REQUIRED TRUE)
+qt_add_executable(ecutoolapp "ECUtool/main.cpp")
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    if(MSVC)
-        target_link_options(ecutoolapp PRIVATE $<$<CONFIG:Debug>:/INCREMENTAL>)
-        target_compile_options(ecutoolapp PRIVATE $<$<CONFIG:Debug>:/ZI>)
-    else()
-        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
-    endif()
-endif()
+set_target_properties(ecutoolapp PROPERTIES
+    WIN32_EXECUTABLE ON
+    MACOSX_BUNDLE ON
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED TRUE
+)
 
 add_subdirectory(ECUtool)
 

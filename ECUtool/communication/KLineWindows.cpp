@@ -35,7 +35,9 @@ void KLineWindows::disconnect()
 
 void KLineWindows::connect()
 {
-	hCom = CreateFile(portName.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+	std::wstring pName(portName.begin(), portName.end());
+
+	hCom = CreateFile(pName.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 
 	if (hCom == INVALID_HANDLE_VALUE)
 	{

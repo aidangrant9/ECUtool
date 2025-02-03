@@ -1,1 +1,1 @@
-target_sources(ecutoolapp PRIVATE   )
+target_sources(ecutoolapp PRIVATE  "mainwindow.cpp")
