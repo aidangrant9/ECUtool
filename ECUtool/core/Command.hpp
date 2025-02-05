@@ -9,13 +9,13 @@
 class Command
 {
 public:
-	explicit Command(const std::string name, const std::shared_ptr<SerialConnection> connection)
-		: name(name), connection(connection)
+	explicit Command(const std::string name)
+		: name(name)
 	{}
 
 	virtual ~Command() = 0;
 
-	virtual void execute(std::function<void(const std::string &result)> executionStopped) = 0;
+	virtual void execute(std::shared_ptr<SerialConnection> connection, std::function<void(const std::string &result)> executionStopped) = 0;
 	
 	const std::string &getName()
 	{
@@ -23,5 +23,4 @@ public:
 	}
 private:
 	std::string name;
-	std::shared_ptr<SerialConnection> connection;
 };

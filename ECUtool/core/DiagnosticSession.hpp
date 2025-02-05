@@ -24,17 +24,10 @@ public:
 
 	void removeCommand(Command &c)
 	{
-		const std::string name = c.getName();
-		for (auto &n : definedCommands)
-		{
-			if (name == n->getName())
-			{
-
-			}
-		}
+		definedCommands.remove_if([&c](auto p) {return p.get() == &c;});
 	}
 
 private:
 	std::list<std::unique_ptr<Command>> definedCommands{};
-	std::shared_ptr<SerialConnection>     connection {};
+	std::shared_ptr<SerialConnection>   connection {};
 }
