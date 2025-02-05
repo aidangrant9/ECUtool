@@ -5,3 +5,4 @@ out/
 CMakeSettings.json
 build/
 resources/
+vcpkg_installed/
