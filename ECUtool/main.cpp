@@ -1,17 +1,14 @@
 #include <QApplication>
-#include <QtWidgets>
-
+#include "ui/mainwindow.hpp"
 
 int main(int argc, char *argv[])
 {
 	QApplication app(argc, argv);
 
-    QWidget window;
-    window.resize(320, 240);
-    window.show();
-    window.setWindowTitle(
-        QApplication::translate("toplevel", "Top-level widget"));
+	MainWindow w;
+	w.show();
 
+	app.setStyle("Fusion");
 	return app.exec();
 }
 

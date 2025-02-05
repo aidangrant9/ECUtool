@@ -4,10 +4,15 @@ project(ECUtool VERSION 0.2.0
                 DESCRIPTION "A GUI application for reverse-engineering ECUs"
                 LANGUAGES CXX)
 
+set(CMAKE_OSX_ARCHITECTURES "arm64")
+
+
 include(vcpkg/scripts/buildsystems/vcpkg.cmake)
 
-
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
+
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 qt_standard_project_setup()
 
@@ -22,6 +27,6 @@ set_target_properties(ecutoolapp PROPERTIES
 
 add_subdirectory(ECUtool)
 
-target_link_libraries(ecutoolapp PRIVATE OneCore Qt6::Widgets)
-
+target_link_libraries(ecutoolapp PRIVATE Qt6::Widgets)
+target_include_directories(ecutoolapp INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/ecutoolapp_autogen/include)
 target_compile_definitions(ecutoolapp PRIVATE ECUtool_VERSION_STRING="${ECUtool_VERSION_MAJOR}.${ECUtool_VERSION_MINOR}.${ECUtool_VERSION_PATCH}")

@@ -1,0 +1,1 @@
+target_sources(ecutoolapp PRIVATE DiagnosticSession.hpp)
