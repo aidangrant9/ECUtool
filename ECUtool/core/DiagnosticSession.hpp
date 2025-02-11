@@ -2,11 +2,13 @@
 
 #include "../communication/SerialConnection.hpp"
 #include "Command.hpp"
+#include "Message.hpp"
 #include <optional>
 #include <list>
 #include <vector>
 #include <filesystem>
 #include <functional>
+#include <mutex>
 
 class DiagnosticSession
 {
@@ -22,16 +24,24 @@ public:
 	void handleMessage(const Message &msg);
 	void handleStatusChange(const SerialConnection::ConnectionStatus status);
 
+	void notifyCommandsView();
+	void notifyMessagesView();
 
-
-	void setMessageViewCallback(std::function<void()> &cb);
-	void setCommandViewCallback(std::function<void()> &cb);
-	void addCommand(Command &c);
+	void setMessageViewCallback(std::function<void()> cb);
+	void setCommandViewCallback(std::function<void()> cb);
+	
+	void addCommand(std::shared_ptr<Command> &c);
+	void addMessage(Message &m);
+	const std::vector<Message> &getMessages();
+	
 	void removeCommand(Command &c);
-	const std::list<std::unique_ptr<Command>> &getCommands();
+	const std::vector<std::shared_ptr<Command>> &getCommands();
 
 private:
-	std::list<std::unique_ptr<Command>> definedCommands{};
+	std::vector<std::shared_ptr<Command>> definedCommands{};
+	std::vector<Message> outputMessages{};
+	std::mutex messageMutex{};
+
 	std::shared_ptr<SerialConnection>   connection{};
 	std::filesystem::path projectRoot{};
 	std::function<void()> commandsViewCallback{};

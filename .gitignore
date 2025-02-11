@@ -4,6 +4,5 @@ out/
 .idea/
 CMakeSettings.json
 build/
-resources/
 vcpkg_installed/
 .cache/

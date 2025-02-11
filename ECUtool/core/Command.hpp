@@ -10,11 +10,14 @@
 struct Command
 {
 public:
-	explicit Command(const std::string &name)
-		: name(name)
+	explicit Command(const std::string &name, const std::size_t repeatInMilliseconds)
+		: name(name), repeatInMilliseconds(repeatInMilliseconds)
 	{}
 
 	virtual ~Command() = default;
 	
+	virtual std::string identifier() { return std::string{ "?" }; }
+	
 	std::string name;
+	std::size_t repeatInMilliseconds;
 };

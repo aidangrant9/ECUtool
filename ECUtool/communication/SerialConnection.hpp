@@ -68,54 +68,42 @@ public:
 
 	bool notifyDataRecieveCallback(const DataMessage<uint8_t> &data)
 	{
-		try
+		if (dataRecieveCallback)
 		{
 			dataRecieveCallback(data);
 			return true;
 		}
-		catch (std::bad_function_call e)
-		{
-			return false;
-		}
+		return false;
 	}
 
 	bool notifyDataSentCallback(const DataMessage<uint8_t> &data)
 	{
-		try
+		if (dataSentCallback)
 		{
 			dataSentCallback(data);
 			return true;
 		}
-		catch (std::bad_function_call e)
-		{
-			return false;
-		}
+		return false;
 	}
 
 	bool notifyMessageCallback(const Message &msg)
 	{
-		try
+		if (messageCallback)
 		{
 			messageCallback(msg);
 			return true;
 		}
-		catch (std::bad_function_call e)
-		{
-			return false;
-		}
+		return false;
 	}
 
 	bool notifyStatusCallback(const ConnectionStatus status)
 	{
-		try
+		if (statusCallback)
 		{
 			statusCallback(status);
 			return true;
 		}
-		catch (std::bad_function_call e)
-		{
-			return false;
-		}
+		return false;
 	}
 
 	/// <summary>

@@ -17,34 +17,49 @@ void DiagnosticSession::setConnection(std::shared_ptr<SerialConnection> newConne
 
 }
 
-void DiagnosticSession::setMessageViewCallback(std::function<void()> &cb)
+void DiagnosticSession::setMessageViewCallback(std::function<void()> cb)
 {
 	messageViewCallback = cb;
 }
 
-void DiagnosticSession::setCommandViewCallback(std::function<void()> &cb)
+void DiagnosticSession::setCommandViewCallback(std::function<void()> cb)
 {
 	commandsViewCallback = cb;
 }
 
-void DiagnosticSession::addCommand(Command &c)
+void DiagnosticSession::addCommand(std::shared_ptr<Command> &c)
 {
-	definedCommands.push_back(std::make_unique<Command>(c));
+	definedCommands.push_back(c);
+	notifyCommandsView();
+}
+
+void DiagnosticSession::addMessage(Message &m)
+{
+	messageMutex.lock();
+	outputMessages.push_back(m);
+	messageMutex.unlock();
+}
+
+const std::vector<Message> &DiagnosticSession::getMessages()
+{
+	return outputMessages;
 }
 
 void DiagnosticSession::removeCommand(Command &c)
 {
-	for (std::unique_ptr<Command> &p : definedCommands)
+	for (int i = 0; i < definedCommands.size(); i++)
 	{
-		if (p.get() == &c)
+		if (definedCommands[i].get() == &c)
 		{
-			definedCommands.remove(p);
+			definedCommands.erase(definedCommands.begin() + i);
 			break;
 		}
 	}
+
+	notifyCommandsView();
 }
 
-const std::list<std::unique_ptr<Command>> &DiagnosticSession::getCommands()
+const std::vector<std::shared_ptr<Command>> &DiagnosticSession::getCommands()
 {
 	return definedCommands;
 }
@@ -67,4 +82,20 @@ void DiagnosticSession::handleMessage(const Message &msg)
 void DiagnosticSession::handleStatusChange(const SerialConnection::ConnectionStatus status)
 {
 
+}
+
+void DiagnosticSession::notifyCommandsView()
+{
+	if (commandsViewCallback)
+	{
+		commandsViewCallback();
+	}
+}
+
+void DiagnosticSession::notifyMessagesView()
+{
+	if (messageViewCallback)
+	{
+		messageViewCallback();
+	}
 }
