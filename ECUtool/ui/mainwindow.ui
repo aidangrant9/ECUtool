@@ -11,7 +11,10 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>ECUtool</string>
+  </property>
+  <property name="windowIcon">
+   <iconset theme="QIcon::ThemeIcon::DocumentProperties"/>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout">
@@ -38,7 +41,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QListWidget" name="listWidget">
+        <widget class="QListView" name="listView">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -91,11 +94,20 @@
    </property>
    <widget class="QMenu" name="menuConnection">
     <property name="title">
-     <string>Connection</string>
+     <string>&amp;Connection</string>
     </property>
+    <addaction name="actionNewConnection"/>
     <addaction name="actionConnect"/>
     <addaction name="actionDisconnect"/>
    </widget>
+   <widget class="QMenu" name="menuProject">
+    <property name="title">
+     <string>&amp;Project</string>
+    </property>
+    <addaction name="actionOpenProject"/>
+    <addaction name="actionNewProject"/>
+   </widget>
+   <addaction name="menuProject"/>
    <addaction name="menuConnection"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -116,19 +128,40 @@
    <addaction name="actionDisconnect"/>
   </widget>
   <action name="actionConnect">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset theme="QIcon::ThemeIcon::CallStart"/>
    </property>
    <property name="text">
-    <string>Connect</string>
+    <string>&amp;Connect</string>
    </property>
   </action>
   <action name="actionDisconnect">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset theme="QIcon::ThemeIcon::CallStop"/>
    </property>
    <property name="text">
-    <string>Disconnect</string>
+    <string>&amp;Disconnect</string>
+   </property>
+  </action>
+  <action name="actionNewConnection">
+   <property name="text">
+    <string>&amp;New Connection</string>
+   </property>
+  </action>
+  <action name="actionOpenProject">
+   <property name="text">
+    <string>&amp;Open Project</string>
+   </property>
+  </action>
+  <action name="actionNewProject">
+   <property name="text">
+    <string>&amp;New Project</string>
    </property>
   </action>
  </widget>

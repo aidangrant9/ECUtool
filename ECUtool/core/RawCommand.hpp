@@ -3,11 +3,11 @@
 #include "Command.hpp"
 #include <vector>
 
-class RawCommand : public Command
+struct RawCommand : public Command
 {
-public:
-	explicit RawCommand(std::string name, std::vector<uint8_t> rawMsg);
-	virtual void execute(std::shared_ptr<SerialConnection> connection, std::function<void(const std::string &result)> executionStopped) override;
+	explicit RawCommand(const std::string &name, const std::vector<uint8_t> &rawMsg);
+	
+	~RawCommand() = default;
 
 	std::vector<uint8_t> msg{};
 };

@@ -8,9 +8,9 @@
 #include <Windows.h>
 
 
-class KLineWindows : public SerialConnection
+class KLine : public SerialConnection
 {
-protected:
+public:
 	enum class InitMode
 	{
 		CARB = 1,
@@ -24,6 +24,8 @@ protected:
 		Functional,
 		Physical,
 	};
+
+protected:
 
 	// Initialisation options
 	std::optional<InitMode>       initMode       {};
@@ -52,10 +54,10 @@ protected:
 	virtual bool initialise();
 	virtual bool setPortConfiguration(size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits);
 public:
-	KLineWindows(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits);
-	KLineWindows(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, InitMode initMode, AddressingMode addressingMode,
+	KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits);
+	KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, InitMode initMode, AddressingMode addressingMode,
 		uint8_t sourceAddress, uint8_t targetAddress);
-	~KLineWindows() override;
+	~KLine() override;
 
 	virtual void connect()    override;
 	virtual void disconnect() override;

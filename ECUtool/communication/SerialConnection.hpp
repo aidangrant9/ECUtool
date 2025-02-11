@@ -5,6 +5,8 @@
 #include <queue>
 #include <mutex>
 #include <functional>
+#include "DataMessage.hpp"
+#include "../core/Message.hpp"
 
 /*
 	Abstract class for serial connections
@@ -38,20 +40,25 @@ public:
 
 	virtual ~SerialConnection() = default;
 
-	virtual void write(const std::vector<uint8_t>& toWrite)
+	virtual void write(const DataMessage<uint8_t> &toWrite)
 	{
 		std::lock_guard<std::mutex> lock{ writeMutex };
 		writeQueue.push_front(toWrite);
 	}
 
-	void registerDataCallback(std::function<void(const std::vector<uint8_t> &data)> &cb)
+	void registerDataRecieveCallback(std::function<void(const DataMessage<uint8_t> &data)> &cb)
 	{
-		dataCallback = cb;
+		dataRecieveCallback = cb;
 	}
 
-	void registerErrorCallback(std::function<void(const std::string &error)> &cb)
+	void registerDataSentCallback(std::function<void(const DataMessage<uint8_t> &data)> &cb)
 	{
-		errorCallback = cb;
+		dataSentCallback = cb;
+	}
+
+	void registerMessageCallback(std::function<void(const Message &msg)> &cb)
+	{
+		messageCallback = cb;
 	}
 
 	void registerStatusCallback(std::function<void(const ConnectionStatus status)> &cb)
@@ -59,11 +66,11 @@ public:
 		statusCallback = cb;
 	}
 
-	bool notifyDataCallback(const std::vector<uint8_t> &data)
+	bool notifyDataRecieveCallback(const DataMessage<uint8_t> &data)
 	{
 		try
 		{
-			dataCallback(data);
+			dataRecieveCallback(data);
 			return true;
 		}
 		catch (std::bad_function_call e)
@@ -72,11 +79,24 @@ public:
 		}
 	}
 
-	bool notifyErrorCallback(const std::string &error)
+	bool notifyDataSentCallback(const DataMessage<uint8_t> &data)
 	{
 		try
 		{
-			errorCallback(error);
+			dataSentCallback(data);
+			return true;
+		}
+		catch (std::bad_function_call e)
+		{
+			return false;
+		}
+	}
+
+	bool notifyMessageCallback(const Message &msg)
+	{
+		try
+		{
+			messageCallback(msg);
 			return true;
 		}
 		catch (std::bad_function_call e)
@@ -117,7 +137,7 @@ public:
 	/// <returns>Callbacks run successfully</returns>
 	bool changeConnectionStatus(const ConnectionStatus status, const std::string errorMessage)
 	{
-		return changeConnectionStatus(status) && notifyErrorCallback(errorMessage);
+		return changeConnectionStatus(status) && notifyMessageCallback(Message{Message::MessageType::Error, errorMessage});
 	}
 
 	virtual void connect() = 0;
@@ -131,11 +151,12 @@ protected:
 	ConnectionStatus connectionStatus{ ConnectionStatus::Disconnected };
 
 	// Callbacks for GUI
-	std::function<void(const std::vector<uint8_t> &data)>  dataCallback{};
-	std::function<void(const std::string &error)>          errorCallback{};
-	std::function<void(const ConnectionStatus     status)> statusCallback{};
+	std::function<void(const DataMessage<uint8_t> &data)>   dataRecieveCallback{};
+	std::function<void(const DataMessage<uint8_t> &data)>   dataSentCallback{};
+	std::function<void(const Message &msg)>                 messageCallback{};
+	std::function<void(const ConnectionStatus status)>      statusCallback{};
 
-	std::deque<std::vector<uint8_t>> writeQueue{};
+	std::deque<DataMessage<uint8_t>> writeQueue{};
 	std::mutex writeMutex{};
 
 	// Platform agnostic port configuration

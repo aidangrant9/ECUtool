@@ -5,22 +5,16 @@
 #include <string>
 #include <cstdint>
 #include <functional>
+#include <optional>
 
-class Command
+struct Command
 {
 public:
-	explicit Command(const std::string name)
+	explicit Command(const std::string &name)
 		: name(name)
 	{}
 
-	virtual ~Command() = 0;
-
-	virtual void execute(std::shared_ptr<SerialConnection> connection, std::function<void(const std::string &result)> executionStopped) = 0;
+	virtual ~Command() = default;
 	
-	const std::string &getName()
-	{
-		return name;
-	}
-private:
 	std::string name;
 };

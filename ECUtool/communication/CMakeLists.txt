@@ -1,4 +1,4 @@
 
 if(WIN32)
-target_sources(ecutoolapp PRIVATE KLineWindows.cpp KLineWindows.hpp)
+target_sources(ecutoolapp PRIVATE KLineWindows.cpp KLineWindows.hpp DataMessage.hpp)
 endif()

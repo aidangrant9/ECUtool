@@ -4,21 +4,24 @@
 #include <chrono>
 #include "VecStream.hpp"
 
-KLineWindows::KLineWindows(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits)
+KLine::KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits)
 	: SerialConnection(portName, baudRate, byteSize, parity, stopBits)
 {}
 
-KLineWindows::KLineWindows(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, InitMode initMode, AddressingMode addressingMode,
+KLine::KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, InitMode initMode, AddressingMode addressingMode,
 	uint8_t sourceAddress, uint8_t targetAddress)
 	: SerialConnection(portName, baudRate, byteSize, parity, stopBits), initMode { initMode }, addressingMode { addressingMode }, sourceAddress { sourceAddress }, targetAddress { targetAddress }
 {}
 
-KLineWindows::~KLineWindows()
+KLine::~KLine()
 {
-	this->disconnect();
+	if (connectionStatus == ConnectionStatus::Connected)
+	{
+		this->disconnect();
+	}
 }
 
-void KLineWindows::disconnect()
+void KLine::disconnect()
 {
 	// Stop work thread
 	workThread.request_stop();
@@ -33,7 +36,7 @@ void KLineWindows::disconnect()
 	}
 }
 
-void KLineWindows::connect()
+void KLine::connect()
 {
 	std::wstring pName(portName.begin(), portName.end());
 
@@ -45,7 +48,7 @@ void KLineWindows::connect()
 		return;
 	}
 
-	this->workThread = std::jthread(&KLineWindows::poll, this);
+	this->workThread = std::jthread(&KLine::poll, this);
 }
 
 
@@ -53,7 +56,7 @@ void KLineWindows::connect()
 /// Handles intialisation of the data link
 /// </summary>
 /// <returns>Success</returns>
-bool KLineWindows::initialise()
+bool KLine::initialise()
 {
 	SecureZeroMemory(&dcb, sizeof(DCB));
 	dcb.DCBlength = sizeof(DCB);
@@ -313,7 +316,7 @@ bool KLineWindows::initialise()
 /// <param name="parity"></param>
 /// <param name="stopBits"></param>
 /// <returns>Success</returns>
-bool KLineWindows::setPortConfiguration(size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits)
+bool KLine::setPortConfiguration(size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits)
 {
 	if (!GetCommState(hCom, &dcb))
 	{
@@ -372,7 +375,7 @@ bool KLineWindows::setPortConfiguration(size_t baudRate, size_t byteSize, Parity
 /// <summary>
 /// Main work thread
 /// </summary>
-void KLineWindows::poll()
+void KLine::poll()
 {
 	std::stop_token st = workThread.get_stop_token();
 
@@ -416,12 +419,13 @@ void KLineWindows::poll()
 		writeMutex.lock();
 		if (!writeQueue.empty())
 		{
-			std::vector<uint8_t> toSend = writeQueue.back();
+			const DataMessage<uint8_t> toSend = writeQueue.back();
+			writeQueue.pop_back();
 			DWORD bytesWritten = 0;
 
-			if (!WriteFile(hCom, toSend.data(), toSend.size(), &bytesWritten, 0))
+			if (!WriteFile(hCom, toSend.data.data(), toSend.data.size(), &bytesWritten, 0))
 			{
-				notifyErrorCallback("Error sending message");
+				notifyMessageCallback(Message{ Message::MessageType::Error, std::string{"Error sending message "} + std::to_string(toSend.id)});
 			}
 		}
 		writeMutex.unlock();
@@ -437,7 +441,7 @@ void KLineWindows::poll()
 			
 			if (!ReadFile(hCom, buf, 265, &read, 0))
 			{
-				notifyErrorCallback("Error reading message");
+				notifyMessageCallback(Message{Message::MessageType::Error, "Error reading message" });
 				break;
 			}
 
@@ -456,7 +460,7 @@ void KLineWindows::poll()
 
 		if (messageRead.size() > 0)
 		{
-			notifyDataCallback(messageRead);
+			notifyDataSentCallback(DataMessage{ messageRead });
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(p3));
