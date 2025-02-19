@@ -1,13 +1,14 @@
 #include "mainwindow.hpp"
 #include "ui_mainwindow.h"
 #include "createconnectiondialog.h"
-#include "commandview.h"
+#include "commandmodel.h"
 #include "commanddelegate.h"
-#include "messageview.h"
+#include "messagemodel.h"
 #include "messagedelegate.h"
 #include <QDebug>
 #include <QFileDialog>
 #include "../core/RawCommand.hpp"
+#include <QRegularExpressionValidator>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -18,64 +19,37 @@ MainWindow::MainWindow(QWidget *parent)
     // Make DiagnosticSession
     diagnosticSession = std::make_shared<DiagnosticSession>();
 
-    CommandView *commandView = new CommandView(diagnosticSession, this);
+    statusLabel = new QLabel(this);
+    ui->statusbar->insertWidget(0, statusLabel);
+
+    // Set connection change callback
+    diagnosticSession->setStatusChanged(std::bind(&MainWindow::onConnectionStatusChange, this, std::placeholders::_1));
+
+    CommandModel *commandView = new CommandModel(diagnosticSession, this);
     CommandDelegate * delegate = new CommandDelegate(this);
+
+    QRegularExpressionValidator *vecStreamValidator = new QRegularExpressionValidator(QRegularExpression("^([0-9A-Fa-f]{2}(\\s*[0-9A-Fa-f]{2})*)$"), this);
+    ui->lineEdit->setValidator(vecStreamValidator);
 
     ui->listView->setModel(commandView);
     ui->listView->setItemDelegate(delegate);
     ui->listView->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->listView->setViewMode(QListView::ListMode);
 
-    ui->listView->setUniformItemSizes(false);
-    ui->listView->setResizeMode(QListView::Adjust);
 
-    MessageView *messageView = new MessageView(diagnosticSession, this);
+    MessageModel *messageView = new MessageModel(diagnosticSession, this);
     MessageDelegate *messageDelegate = new MessageDelegate(this);
 
     ui->messageView->setModel(messageView);
     ui->messageView->setItemDelegate(messageDelegate);
-
-    Message* m = new Message(Message::MessageType::Data, "ExampleExampleExample", "Script1.lua");
-
-    diagnosticSession->addMessage(*m);
-
-    //qDebug() << ui->listView->itemDelegate();
-
-    std::shared_ptr<Command> c = std::make_shared<RawCommand>("Example", 1, std::vector<uint8_t>{});
-    diagnosticSession->addCommand(c);
-    std::shared_ptr<Command> c1 = std::make_shared<RawCommand>("e2", 1, std::vector<uint8_t>{});
-    diagnosticSession->addCommand(c1);
-    std::shared_ptr<Command> c2 = std::make_shared<RawCommand>("e3", 1, std::vector<uint8_t>{});
-    diagnosticSession->addCommand(c2);
-    std::shared_ptr<Command> c3 = std::make_shared<RawCommand>("Example", 1, std::vector<uint8_t>{});
-    diagnosticSession->addCommand(c3);
-    std::shared_ptr<Command> c4 = std::make_shared<RawCommand>("Example", 1, std::vector<uint8_t>{});
-    diagnosticSession->addCommand(c4);
-    std::shared_ptr<Command> c5 = std::make_shared<RawCommand>("Example", 1, std::vector<uint8_t>{});
-    diagnosticSession->addCommand(c5);
-    std::shared_ptr<Command> c6 = std::make_shared<RawCommand>("e2", 1, std::vector<uint8_t>{});
-    diagnosticSession->addCommand(c6);
-    std::shared_ptr<Command> c7 = std::make_shared<RawCommand>("e3", 1, std::vector<uint8_t>{});
-    diagnosticSession->addCommand(c7);
-    std::shared_ptr<Command> c8 = std::make_shared<RawCommand>("Example", 1, std::vector<uint8_t>{});
-    diagnosticSession->addCommand(c8);
-    std::shared_ptr<Command> c9 = std::make_shared<RawCommand>("Example", 1, std::vector<uint8_t>{});
-    diagnosticSession->addCommand(c9);
-
-    //qDebug() << ui->listView->model()->rowCount();
-
-    diagnosticSession->notifyCommandsView();
-
-    ui->listView->reset();
-    ui->listView->update();
-    ui->listView->repaint();
-
-    ui->listView->setCurrentIndex(ui->listView->model()->index(0, 0));
-
+    ui->messageView->setResizeMode(QListView::Adjust);
 
     connect(ui->actionNewConnection, &QAction::triggered, this, &MainWindow::onNewConnection);
     connect(ui->actionOpenProject, &QAction::triggered, this, &MainWindow::onOpenProject);
-    connect(ui->actionNewProject, &QAction::triggered, this, &MainWindow::onNewProject);
+    connect(ui->actionSaveProject, &QAction::triggered, this, &MainWindow::onSaveProject);
+    connect(ui->actionConnect, &QAction::triggered, this, &MainWindow::onConnect);
+    connect(ui->actionDisconnect, &QAction::triggered, this, &MainWindow::onDisconnect);
+    connect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::onManualEnter);
 }
 
 MainWindow::~MainWindow()
@@ -101,12 +75,60 @@ void MainWindow::onOpenProject()
 {
     QFileDialog fileBrowser(this);
     fileBrowser.setFileMode(QFileDialog::FileMode::Directory);
+    fileBrowser.setAcceptMode(QFileDialog::AcceptMode::AcceptOpen);
     fileBrowser.exec();
 
-    qDebug() << std::filesystem::current_path().native();
-
+    diagnosticSession->openProject(std::filesystem::path(fileBrowser.selectedFiles().first().toStdString()));
 }
 
-void MainWindow::onNewProject()
+void MainWindow::onSaveProject()
 {
+    diagnosticSession->saveProject();
+}
+
+void MainWindow::onConnect()
+{
+    diagnosticSession->connect();
+}
+
+void MainWindow::onDisconnect()
+{
+    diagnosticSession->disconnect();
+}
+
+void MainWindow::onManualEnter()
+{
+    // need to implement
+}
+
+void MainWindow::onConnectionStatusChange(std::optional<SerialConnection::ConnectionStatus> status)
+{
+    QMetaObject::invokeMethod(this, [=]() {
+        if (status == std::nullopt)
+        {
+            ui->actionConnect->setEnabled(false);
+            ui->actionDisconnect->setEnabled(false);
+        }
+        else
+        {
+            switch (status.value())
+            {
+            case SerialConnection::ConnectionStatus::Connected:
+                ui->actionConnect->setEnabled(false);
+                ui->actionDisconnect->setEnabled(true);
+                break;
+            case SerialConnection::ConnectionStatus::Disconnected:
+                ui->actionConnect->setEnabled(true);
+                ui->actionDisconnect->setEnabled(false);
+                break;
+            case SerialConnection::ConnectionStatus::Error:
+                // Might need changing
+                ui->actionConnect->setEnabled(false);
+                ui->actionDisconnect->setEnabled(false);
+                break;
+            }
+            static std::array<std::string, 3> statusStrings{ "Disconnected", "Connected", "Error" };
+            statusLabel->setText(QString::fromStdString(statusStrings[static_cast<int>(status.value())]));
+        }
+        }, Qt::QueuedConnection);
 }

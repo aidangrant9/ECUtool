@@ -15,7 +15,7 @@ KLine::KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity par
 
 KLine::~KLine()
 {
-	if (connectionStatus == ConnectionStatus::Connected)
+	if (connectionStatus != ConnectionStatus::Disconnected)
 	{
 		this->disconnect();
 	}
@@ -32,8 +32,11 @@ void KLine::disconnect()
 		if (!CloseHandle(hCom))
 		{
 			changeConnectionStatus(ConnectionStatus::Error, "Failed to close Windows file handle");
+			return;
 		}
 	}
+
+	changeConnectionStatus(ConnectionStatus::Disconnected);
 }
 
 void KLine::connect()
@@ -67,7 +70,8 @@ bool KLine::initialise()
 		return false;
 	}
 
-	COMMTIMEOUTS readTimeouts = { p1, 0, 0, p4, 0 };
+	COMMTIMEOUTS readTimeouts = { p1, 0, p1, p4, 0 };
+
 
 	// Configure port timeouts
 	if (!SetCommTimeouts(hCom, &readTimeouts))
@@ -136,7 +140,7 @@ bool KLine::initialise()
 		uint8_t buf[265];
 		DWORD read = 0;
 
-		if (!ReadFile(hCom, buf, 265, &read, 0))
+		if (!ReadFile(hCom, buf, 1, &read, 0))
 		{
 			changeConnectionStatus(ConnectionStatus::Error, "Error reading StartCommunicationResponse");
 			return false;
@@ -386,7 +390,7 @@ void KLine::poll()
 		return;
 	}
 
-	COMMTIMEOUTS readTimeouts = { p1, 0, 0, p4, 0 };
+	COMMTIMEOUTS readTimeouts = { p1, 0, p1, p4, 0 };
 
 	// Configure port timeouts
 	if (!SetCommTimeouts(hCom, &readTimeouts))

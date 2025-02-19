@@ -1,35 +1,36 @@
 #pragma once
 
-#include <QAbstractListModel>
-#include "../core/DiagnosticSession.hpp"
+#include <QListView>
+#include <QContextMenuEvent>
+#include <QClipboard>
+#include <QMenu>
+#include <QApplication>
+#include "../core/Message.hpp"
 
-class MessageView : public QAbstractListModel
+class MessageView : public QListView
 {
-	Q_OBJECT
+Q_OBJECT
 public:
-	explicit MessageView(std::shared_ptr<DiagnosticSession> &diagnosticSession, QObject *parent)
-		: diagnosticSession(diagnosticSession)
+	explicit MessageView(QWidget *parent = nullptr)
+		: QListView(parent)
+	{}
+
+protected:
+	void contextMenuEvent(QContextMenuEvent *e) override
 	{
-		diagnosticSession->setMessageViewCallback([this]() {beginResetModel(); endResetModel();});
-	}
-
-
-private:
-	std::shared_ptr<DiagnosticSession> diagnosticSession{};
-
-	Q_INVOKABLE int rowCount(const QModelIndex &parent) const
-	{
-		return diagnosticSession->getMessages().size();
-	}
-
-	Q_INVOKABLE QVariant data(const QModelIndex &index, int role) const override
-	{
-		if (!index.isValid() || index.row() >= diagnosticSession->getCommands().size())
+		QModelIndex index = indexAt(e->pos());
+		std::shared_ptr<Message> m = index.data(Qt::UserRole).value<std::shared_ptr<Message>>();
+		
+		if (index.isValid())
 		{
-			return QVariant();
+			QMenu menu{ this };
+			for (std::pair<std::string, std::string> &fmt : m->formats)
+			{
+				QAction *a = new QAction(std::string{ "Copy " + fmt.first}.c_str(), this);
+				connect(a, &QAction::triggered, this, [this, fmt]() {QApplication::clipboard()->setText(fmt.second.c_str());});
+				menu.addAction(a);
+			}
+			menu.exec(e->globalPos());
 		}
-
-		const std::vector<Message> &ms = diagnosticSession->getMessages();
-		return QVariant::fromValue(ms.at(index.row()));
 	}
 };

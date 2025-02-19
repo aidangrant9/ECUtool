@@ -6,3 +6,4 @@ CMakeSettings.json
 build/
 vcpkg_installed/
 .cache/
+resources/

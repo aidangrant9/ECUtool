@@ -1,8 +1,9 @@
 #pragma once
 
 #include <string>
-#include <tuple>
+#include <utility>
 #include <vector>
+#include <chrono>
 
 struct Message
 {
@@ -14,43 +15,26 @@ struct Message
 		Unspecified
 	};
 
-	Message() = default;
-
-	Message(const MessageType type, const std::string &msg, const std::string &src)
-		: msg(msg), type(type), source(source)
-	{}
-
-	Message(const MessageType type, const std::string &msg)
-		: msg(msg), type(type)
-	{}
-
-	Message(const std::string &msg)
-		: msg(msg)
-	{}
-
-	Message(const std::string &msg, const std::string &src)
-		: msg(msg), source(src)
-	{}
-
-	Message(const MessageType type, const std::string &msg, const std::vector<std::tuple<std::string, std::string>> &formats)
-		: msg(msg), type(type), formats(formats)
-	{}
-
-	Message(const MessageType type, const std::string &msg, uint64_t id, const std::vector<std::tuple<std::string, std::string>> &formats)
-		: msg(msg), type(type), formats(formats), id(id)
-	{}
-
-	Message(const MessageType type, const std::string &msg, const std::string &src, const std::vector<std::tuple<std::string, std::string>> &formats)
-		: msg(msg), type(type), formats(formats), source(src)
-	{}
-
-	Message(const MessageType type, const std::string &msg, uint64_t id, const std::string &src, const std::vector<std::tuple<std::string, std::string>> &formats)
+	Message(const MessageType type = MessageType::Unspecified, const std::string &msg = "",
+		const std::string &src = "", long int id = -1, const std::vector<std::pair<std::string, std::string>> &formats = {})
 		: msg(msg), type(type), formats(formats), source(src), id(id)
-	{}
+	{
+		auto now = std::chrono::system_clock::now();
+		auto now_time_t = std::chrono::system_clock::to_time_t(now);
+		std::tm now_tm = *std::localtime(&now_time_t);
+		auto duration = now.time_since_epoch();
+		auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() % 1000;
+		std::ostringstream oss;
+		oss << std::setw(2) << std::setfill('0') << now_tm.tm_min << ":"
+			<< std::setw(2) << std::setfill('0') << now_tm.tm_sec << "."
+			<< std::setw(2) << std::setfill('0') << millis / 10;
+		timeString = oss.str();
+	}
 
-	std::string source{"?"};
-	uint64_t id;
+	std::string timeString{};
+	std::string source{};
+	long int id {-1};
 	std::string msg {};
 	MessageType type { MessageType::Unspecified };
-	std::vector<std::tuple<std::string, std::string>> formats {};
+	std::vector<std::pair<std::string, std::string>> formats {};
 };

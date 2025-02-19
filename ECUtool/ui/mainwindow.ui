@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>960</width>
-    <height>540</height>
+    <width>1368</width>
+    <height>781</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -41,7 +41,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QListView" name="listView">
+        <widget class="CommandView" name="listView">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -69,7 +69,7 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QListView" name="messageView"/>
+        <widget class="MessageView" name="messageView"/>
        </item>
        <item>
         <widget class="QLineEdit" name="lineEdit"/>
@@ -84,7 +84,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>960</width>
+     <width>1368</width>
      <height>21</height>
     </rect>
    </property>
@@ -101,7 +101,7 @@
      <string>&amp;Project</string>
     </property>
     <addaction name="actionOpenProject"/>
-    <addaction name="actionNewProject"/>
+    <addaction name="actionSaveProject"/>
    </widget>
    <addaction name="menuProject"/>
    <addaction name="menuConnection"/>
@@ -155,12 +155,24 @@
     <string>&amp;Open Project</string>
    </property>
   </action>
-  <action name="actionNewProject">
+  <action name="actionSaveProject">
    <property name="text">
-    <string>&amp;New Project</string>
+    <string>Save Project</string>
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>MessageView</class>
+   <extends>QListView</extends>
+   <header>messageview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>CommandView</class>
+   <extends>QListView</extends>
+   <header>commandview.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

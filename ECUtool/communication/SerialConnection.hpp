@@ -17,7 +17,7 @@ class SerialConnection
 public:
 	enum class ConnectionStatus
 	{
-		Disconnected,
+		Disconnected = 0,
 		Connected,
 		Error,
 	};
@@ -61,7 +61,7 @@ public:
 		messageCallback = cb;
 	}
 
-	void registerStatusCallback(std::function<void(const ConnectionStatus status)> &cb)
+	void registerStatusCallback(std::function<void(const ConnectionStatus previous, const ConnectionStatus current)> &cb)
 	{
 		statusCallback = cb;
 	}
@@ -96,11 +96,11 @@ public:
 		return false;
 	}
 
-	bool notifyStatusCallback(const ConnectionStatus status)
+	bool notifyStatusCallback(const ConnectionStatus previous, const ConnectionStatus current)
 	{
 		if (statusCallback)
 		{
-			statusCallback(status);
+			statusCallback(previous, current);
 			return true;
 		}
 		return false;
@@ -113,8 +113,9 @@ public:
 	/// <returns>Callback run successfully</returns>
 	bool changeConnectionStatus(const ConnectionStatus status)
 	{
+		bool r = notifyStatusCallback(connectionStatus, status);
 		this->connectionStatus = status;
-		return notifyStatusCallback(status);
+		return r;
 	}
 
 	/// <summary>
@@ -125,9 +126,15 @@ public:
 	/// <returns>Callbacks run successfully</returns>
 	bool changeConnectionStatus(const ConnectionStatus status, const std::string errorMessage)
 	{
-		return changeConnectionStatus(status) && notifyMessageCallback(Message{Message::MessageType::Error, errorMessage});
+		return changeConnectionStatus(status) && notifyMessageCallback(Message{Message::MessageType::Error, errorMessage, name()});
 	}
 
+	const ConnectionStatus status()
+	{
+		return connectionStatus;
+	}
+
+	virtual std::string name() = 0;
 	virtual void connect() = 0;
 	virtual void disconnect() = 0;
 protected:
@@ -142,7 +149,7 @@ protected:
 	std::function<void(const DataMessage<uint8_t> &data)>   dataRecieveCallback{};
 	std::function<void(const DataMessage<uint8_t> &data)>   dataSentCallback{};
 	std::function<void(const Message &msg)>                 messageCallback{};
-	std::function<void(const ConnectionStatus status)>      statusCallback{};
+	std::function<void(const ConnectionStatus previous, const ConnectionStatus current)> statusCallback{};
 
 	std::deque<DataMessage<uint8_t>> writeQueue{};
 	std::mutex writeMutex{};

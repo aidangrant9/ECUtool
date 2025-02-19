@@ -13,17 +13,17 @@ public:
 	{}
 
 	const std::vector<T> data;
-	const uint64_t id;
+	const long int id;
 
 private:
-	uint64_t genID()
+	long int genID()
 	{
 		idMutex.lock();
-		uint64_t ret = globalID++;
+		long int ret = globalID++;
 		idMutex.unlock();
 		return ret;
 	}
 
-	inline static uint64_t globalID{ 0 };
+	inline static long int globalID{ 0 };
 	inline static std::mutex idMutex{};
 };

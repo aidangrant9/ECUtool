@@ -50,6 +50,7 @@ protected:
 	HANDLE hCom{ INVALID_HANDLE_VALUE };
 	DCB dcb{};
 
+	virtual std::string name() { return std::string{ "K-Line" }; }
 	virtual void poll();
 	virtual bool initialise();
 	virtual bool setPortConfiguration(size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits);
