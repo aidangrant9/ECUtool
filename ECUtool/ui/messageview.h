@@ -5,6 +5,7 @@
 #include <QClipboard>
 #include <QMenu>
 #include <QApplication>
+#include <QScrollBar>
 #include "../core/Message.hpp"
 
 class MessageView : public QListView

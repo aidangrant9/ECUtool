@@ -105,11 +105,11 @@ void CreateConnectionDialog::connectKLine()
     if (initMode == KLine::InitMode::None)
     {
         // Implement platform specific initialisation here
-        *toConstruct = new KLine(portName, baudRate, byteSize, parity, KLine::StopBits::OneStopBit);
+        *toConstruct = new KLine(portName, baudRate, byteSize, parity, KLine::StopBits::OneStopBit, true);
     }
     else
     {
-        *toConstruct = new KLine(portName, baudRate, byteSize, parity, KLine::StopBits::OneStopBit, initMode, addressingMode, sourceAddress, targetAddress);
+        *toConstruct = new KLine(portName, baudRate, byteSize, parity, KLine::StopBits::OneStopBit, true, initMode, addressingMode, sourceAddress, targetAddress);
     }
 
     this->close();

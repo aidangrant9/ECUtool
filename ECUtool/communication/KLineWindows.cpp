@@ -4,13 +4,14 @@
 #include <chrono>
 #include "VecStream.hpp"
 
-KLine::KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits)
-	: SerialConnection(portName, baudRate, byteSize, parity, stopBits)
+KLine::KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, bool echoCancellation)
+	: SerialConnection(portName, baudRate, byteSize, parity, stopBits), echoCancellation{echoCancellation}
 {}
 
-KLine::KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, InitMode initMode, AddressingMode addressingMode,
+KLine::KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, bool echoCancellation, InitMode initMode, AddressingMode addressingMode,
 	uint8_t sourceAddress, uint8_t targetAddress)
 	: SerialConnection(portName, baudRate, byteSize, parity, stopBits), initMode { initMode }, addressingMode { addressingMode }, sourceAddress { sourceAddress }, targetAddress { targetAddress }
+	,echoCancellation{echoCancellation}
 {}
 
 KLine::~KLine()
@@ -424,6 +425,7 @@ void KLine::poll()
 		if (!writeQueue.empty())
 		{
 			const DataMessage<uint8_t> toSend = writeQueue.back();
+			sent.push_front(toSend);
 			writeQueue.pop_back();
 			DWORD bytesWritten = 0;
 
@@ -462,9 +464,14 @@ void KLine::poll()
 			}
 		}
 
-		if (messageRead.size() > 0)
+		if (!sent.empty() && messageRead == sent.back().data)
 		{
-			notifyDataSentCallback(DataMessage{ messageRead });
+			notifyDataSentCallback(sent.back());
+			sent.pop_back();
+		}
+		else if (messageRead.size() > 0)
+		{
+			notifyDataRecieveCallback(DataMessage{ messageRead });
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(p3));

@@ -5,6 +5,7 @@
 #include "commanddelegate.h"
 #include "messagemodel.h"
 #include "messagedelegate.h"
+#include "commandnew.h"
 #include <QDebug>
 #include <QFileDialog>
 #include "../core/RawCommand.hpp"
@@ -50,6 +51,13 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionConnect, &QAction::triggered, this, &MainWindow::onConnect);
     connect(ui->actionDisconnect, &QAction::triggered, this, &MainWindow::onDisconnect);
     connect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::onManualEnter);
+    connect(ui->addCommandButton, &QPushButton::pressed, this, &MainWindow::onAddCommand);
+    connect(ui->listView, &QListView::activated, this, &MainWindow::onCommandDoubleClicked);
+    connect(messageView, &MessageModel::messagesUpdated, this, [this]() {
+        QScrollBar *scrollBar = ui->messageView->verticalScrollBar();
+        if (scrollBar->value() == scrollBar->maximum()) {
+            ui->messageView->scrollToBottom();
+        }});
 }
 
 MainWindow::~MainWindow()
@@ -99,6 +107,25 @@ void MainWindow::onDisconnect()
 void MainWindow::onManualEnter()
 {
     // need to implement
+}
+
+void MainWindow::onAddCommand()
+{
+    Command *editedCommand;
+    CommandNew editWindow = CommandNew(nullptr, &editedCommand, nullptr);
+    editWindow.exec();
+
+    if (editWindow.result())
+    {
+        std::shared_ptr<Command> newCommand{ editedCommand };
+        diagnosticSession->addCommand(newCommand);
+    }
+}
+
+void MainWindow::onCommandDoubleClicked(const QModelIndex &index)
+{
+    std::shared_ptr<Command> c = index.data().value<std::shared_ptr<Command>>();
+    diagnosticSession->queueCommand(c);
 }
 
 void MainWindow::onConnectionStatusChange(std::optional<SerialConnection::ConnectionStatus> status)

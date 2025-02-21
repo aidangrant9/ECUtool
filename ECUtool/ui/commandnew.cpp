@@ -4,6 +4,7 @@
 #include <QIntValidator>
 #include "../core/ScriptCommand.hpp"
 #include "../core/RawCommand.hpp"
+#include <QMessageBox>
 
 CommandNew::CommandNew(Command *command, Command **toReturn, QWidget *parent)
     : QDialog(parent)
@@ -75,6 +76,14 @@ void CommandNew::onSaveCommand()
     std::string name = ui->nameEdit->text().toStdString();
     size_t repeatInterval = ui->intervalEdit->text().toInt();
     std::vector data = dataVecFromString(ui->dataEdit->text());
+
+    if (name.empty())
+    {
+        QMessageBox alert;
+        alert.setText("Name cannot be empty");
+        alert.exec();
+        return;
+    }
 
     switch (ui->comboBox->currentData().value<Command::Type>())
     {

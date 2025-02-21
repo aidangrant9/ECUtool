@@ -15,6 +15,7 @@ set(CMAKE_AUTORCC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Core)
 find_package(nlohmann_json REQUIRED)
+find_package(lua REQUIRED)
 
 qt_standard_project_setup()
 
@@ -33,6 +34,6 @@ endif()
 
 add_subdirectory(ECUtool)
 
-target_link_libraries(ecutoolapp PRIVATE Qt6::Widgets Qt6::Core nlohmann_json::nlohmann_json)
+target_link_libraries(ecutoolapp PRIVATE Qt6::Widgets Qt6::Core nlohmann_json::nlohmann_json lua)
 target_include_directories(ecutoolapp INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/ecutoolapp_autogen/include)
 target_compile_definitions(ecutoolapp PRIVATE ECUtool_VERSION_STRING="${ECUtool_VERSION_MAJOR}.${ECUtool_VERSION_MINOR}.${ECUtool_VERSION_PATCH}")

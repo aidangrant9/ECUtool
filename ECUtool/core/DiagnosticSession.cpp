@@ -25,6 +25,8 @@ void DiagnosticSession::setConnection(std::shared_ptr<SerialConnection> newConne
 
 void DiagnosticSession::connect()
 {
+	commandExecutor = std::shared_ptr<CommandExecutor>(new CommandExecutor(this, std::shared_ptr<SerialConnection>(connection), projectRoot));
+
 	if (connection.get() != nullptr)
 		connection->connect();
 }
@@ -33,6 +35,8 @@ void DiagnosticSession::disconnect()
 {
 	if (connection.get() != nullptr)
 		connection->disconnect();
+
+	commandExecutor = nullptr;
 }
 
 void DiagnosticSession::openProject(const std::filesystem::path &path)
@@ -167,11 +171,16 @@ void DiagnosticSession::addCommand(std::shared_ptr<Command> c)
 	if (commandsResetEnd)
 		commandsResetEnd();
 
+	initialiseScript(c);
+}
+
+void DiagnosticSession::initialiseScript(std::shared_ptr<Command> c)
+{
 	if (auto p = dynamic_cast<ScriptCommand *>(c.get()))
 	{
-		if (!std::filesystem::exists(projectRoot / "scripts" / std::string{c->name + ".lua"}))
+		if (!std::filesystem::exists(projectRoot / "scripts" / std::string{ c->name + ".lua" }))
 		{
-			std::ofstream globalScript(projectRoot / "scripts" / std::string{c->name + ".lua"});
+			std::ofstream globalScript(projectRoot / "scripts" / std::string{ c->name + ".lua" });
 		}
 	}
 }
@@ -216,8 +225,15 @@ void DiagnosticSession::errorMessage(const std::string &msg, const std::string &
 void DiagnosticSession::dataRecievedMessage(const DataMessage<uint8_t> &msg, const std::string &src)
 {
 	std::string contents = stringFromDataVec(msg.data);
-	addMessage(std::shared_ptr<Message>(new Message{ Message::MessageType::Data, "<div style=\"color:#118ab2\">Res.</div>" + contents,
+	addMessage(std::shared_ptr<Message>(new Message{ Message::MessageType::Data, "<div style=\"color:#118ab2\">Res. </div>" + contents,
 		src, msg.id, {std::make_pair(std::string{"Data"}, contents)}}));
+}
+
+void DiagnosticSession::dataSentMessage(const DataMessage<uint8_t> &msg, const std::string &src)
+{
+	std::string contents = stringFromDataVec(msg.data);
+	addMessage(std::shared_ptr<Message>(new Message{ Message::MessageType::Data, "<div style=\"color:#06d6a0\">Req. </div>" + contents,
+		src, msg.id, {std::make_pair(std::string{"Data"}, contents)} }));
 }
 
 void DiagnosticSession::successMessage(const std::string &msg, const std::string &src)
@@ -230,6 +246,45 @@ void DiagnosticSession::infoMessage(const std::string &msg, const std::string &s
 	addMessage(std::shared_ptr<Message>(new Message{ Message::MessageType::Info, msg, src}));
 }
 
+std::vector<uint8_t> DiagnosticSession::readOrTimeout(int ms)
+{
+	auto startTime = std::chrono::steady_clock::now();
+	std::vector<uint8_t> data{};
+	incomingQueue.clear();
+
+	while (true)
+	{
+		incomingMutex.lock();
+		if (!incomingQueue.empty())
+		{
+			data = incomingQueue.front().data;
+			incomingQueue.pop_front();
+		}
+		incomingMutex.unlock();
+
+		if (!data.empty())
+		{
+			return data;
+		}
+
+		if (std::chrono::steady_clock::now() - startTime > std::chrono::milliseconds(ms))
+		{
+			return {};
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+
+	
+}
+
+void DiagnosticSession::send(std::vector<uint8_t> data)
+{
+	if (connection)
+	{
+		connection->write(data);
+	}
+}
+
 bool DiagnosticSession::editCommand(int idx, std::shared_ptr<Command> &c)
 {
 	if (idx < definedCommands.size())
@@ -239,8 +294,10 @@ bool DiagnosticSession::editCommand(int idx, std::shared_ptr<Command> &c)
 		definedCommands[idx] = c;
 		if (commandsResetEnd)
 			commandsResetEnd();
+		initialiseScript(c);
 		return true;
 	}
+
 	return false;
 }
 
@@ -263,14 +320,26 @@ const std::vector<std::shared_ptr<Command>> &DiagnosticSession::getCommands()
 	return definedCommands;
 }
 
+void DiagnosticSession::queueCommand(std::shared_ptr<Command> c)
+{
+	if (commandExecutor.get() != nullptr)
+	{
+		commandExecutor->queueCommand(c);
+	}
+}
+
 void DiagnosticSession::handleOnDataSent(const DataMessage<uint8_t> &data)
 {
-
+	dataSentMessage(data, "DiagnosticSession");
 }
 
 void DiagnosticSession::handleOnDataRecieved(const DataMessage<uint8_t> &data)
 {
+	incomingMutex.lock();
+	incomingQueue.push_front(data);
+	incomingMutex.unlock();
 
+	dataRecievedMessage(data, "DiagnosticSession");
 }
 
 // Needs cleaning

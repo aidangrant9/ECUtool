@@ -3,6 +3,7 @@
   "version-string": "0.2.0",
   "dependencies": [
     "nlohmann-json",
-    "sol2"
+    "sol2",
+    "lua"
   ]
 }

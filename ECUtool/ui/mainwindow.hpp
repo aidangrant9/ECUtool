@@ -25,6 +25,8 @@ private:
     void onConnect();
     void onDisconnect();
     void onManualEnter();
+    void onAddCommand();
+    void onCommandDoubleClicked(const QModelIndex &index);
     void onConnectionStatusChange(std::optional<SerialConnection::ConnectionStatus>);
     QLabel *statusLabel;
     Ui::MainWindow *ui;

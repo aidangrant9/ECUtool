@@ -50,6 +50,16 @@
          </property>
         </widget>
        </item>
+       <item>
+        <widget class="QPushButton" name="addCommandButton">
+         <property name="text">
+          <string/>
+         </property>
+         <property name="icon">
+          <iconset theme="QIcon::ThemeIcon::ListAdd"/>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
     </item>

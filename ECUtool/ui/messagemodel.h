@@ -11,9 +11,11 @@ public:
 		: diagnosticSession(diagnosticSession)
 	{
 		diagnosticSession->setMessageResetStart([this]() {beginResetModel();});
-		diagnosticSession->setMessageResetEnd([this]() {endResetModel();});
+		diagnosticSession->setMessageResetEnd([this]() {endResetModel(); emit messagesUpdated();});
 	}
 
+signals:
+	void messagesUpdated();
 
 private:
 	std::shared_ptr<DiagnosticSession> diagnosticSession{};
@@ -33,4 +35,6 @@ private:
 		const std::vector<std::shared_ptr<Message>> &ms = diagnosticSession->getMessages();
 		return QVariant::fromValue(ms.at(index.row()));
 	}
+
+
 };

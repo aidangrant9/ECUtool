@@ -1,2 +1,2 @@
 target_sources(ecutoolapp PRIVATE DiagnosticSession.cpp DiagnosticSession.hpp "Command.hpp" RawCommand.hpp
-	 Message.hpp ScriptCommand.hpp)
+	 Message.hpp ScriptCommand.hpp "CommandExecutor.hpp" "CommandExecutor.cpp")

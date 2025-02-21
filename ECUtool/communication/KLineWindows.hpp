@@ -32,6 +32,7 @@ protected:
 	std::optional<AddressingMode> addressingMode {};
 	std::optional<uint8_t>        sourceAddress  {};
 	std::optional<uint8_t>        targetAddress  {};
+	bool echoCancellation{};
 
 	// Connection parameters
 
@@ -46,6 +47,9 @@ protected:
 	// Thread for async IO
 	std::jthread workThread;
 
+	// Queue for echo cancellation
+	std::deque<DataMessage<uint8_t>> sent{};
+
 	// Communications resource handle
 	HANDLE hCom{ INVALID_HANDLE_VALUE };
 	DCB dcb{};
@@ -55,8 +59,8 @@ protected:
 	virtual bool initialise();
 	virtual bool setPortConfiguration(size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits);
 public:
-	KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits);
-	KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, InitMode initMode, AddressingMode addressingMode,
+	KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, bool echoCancellation);
+	KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, bool echoCancellation, InitMode initMode, AddressingMode addressingMode,
 		uint8_t sourceAddress, uint8_t targetAddress);
 	~KLine() override;
 
