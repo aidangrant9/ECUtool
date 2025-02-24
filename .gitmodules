@@ -3,4 +3,4 @@
 	url = https://github.com/microsoft/vcpkg.git
 [submodule "serial"]
 	path = serial
-	url = https://github.com/wjwwood/serial/
+	url = https://github.com/aidangrant9/serial
