@@ -3,6 +3,7 @@
 #include <iostream>
 #include <chrono>
 #include "VecStream.hpp"
+#include "../../serial/include/serial/serial.h"
 
 KLine::KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, bool echoCancellation)
 	: SerialConnection(portName, baudRate, byteSize, parity, stopBits), echoCancellation{echoCancellation}

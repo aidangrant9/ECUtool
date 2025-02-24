@@ -9,6 +9,7 @@ set(CMAKE_OSX_ARCHITECTURES "arm64")
 
 include(vcpkg/scripts/buildsystems/vcpkg.cmake)
 
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
@@ -33,7 +34,8 @@ if(WIN32)
 endif()
 
 add_subdirectory(ECUtool)
+add_subdirectory(serial)
 
-target_link_libraries(ecutoolapp PRIVATE Qt6::Widgets Qt6::Core nlohmann_json::nlohmann_json lua)
+target_link_libraries(ecutoolapp PRIVATE Qt6::Widgets Qt6::Core nlohmann_json::nlohmann_json lua serial)
 target_include_directories(ecutoolapp INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/ecutoolapp_autogen/include)
 target_compile_definitions(ecutoolapp PRIVATE ECUtool_VERSION_STRING="${ECUtool_VERSION_MAJOR}.${ECUtool_VERSION_MINOR}.${ECUtool_VERSION_PATCH}")
