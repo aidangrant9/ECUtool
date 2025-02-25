@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SerialConnection.hpp"
+#include "Connection.hpp"
 
 #include <string>
 #include <thread>
@@ -8,7 +8,7 @@
 #include <Windows.h>
 
 
-class KLine : public SerialConnection
+class KLine : public Connection
 {
 public:
 	enum class InitMode

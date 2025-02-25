@@ -6,12 +6,12 @@
 #include "../../serial/include/serial/serial.h"
 
 KLine::KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, bool echoCancellation)
-	: SerialConnection(portName, baudRate, byteSize, parity, stopBits), echoCancellation{echoCancellation}
+	: Connection(portName, baudRate, byteSize, parity, stopBits), echoCancellation{echoCancellation}
 {}
 
 KLine::KLine(std::string &portName, size_t baudRate, size_t byteSize, Parity parity, StopBits stopBits, bool echoCancellation, InitMode initMode, AddressingMode addressingMode,
 	uint8_t sourceAddress, uint8_t targetAddress)
-	: SerialConnection(portName, baudRate, byteSize, parity, stopBits), initMode { initMode }, addressingMode { addressingMode }, sourceAddress { sourceAddress }, targetAddress { targetAddress }
+	: Connection(portName, baudRate, byteSize, parity, stopBits), initMode { initMode }, addressingMode { addressingMode }, sourceAddress { sourceAddress }, targetAddress { targetAddress }
 	,echoCancellation{echoCancellation}
 {}
 

@@ -4,14 +4,14 @@
 #include "ScriptCommand.hpp"
 #include <fstream>
 
-void DiagnosticSession::setConnection(std::shared_ptr<SerialConnection> newConnection)
+void DiagnosticSession::setConnection(std::shared_ptr<Connection> newConnection)
 {
 	connection = newConnection;
 
 	std::function<void(const DataMessage<uint8_t> &cb)> dataRcv = std::bind(&DiagnosticSession::handleOnDataRecieved, this, std::placeholders::_1);
 	std::function<void(const DataMessage<uint8_t> &data)> dataSnt = std::bind(&DiagnosticSession::handleOnDataSent, this, std::placeholders::_1);
 	std::function<void(const Message &msg)> msgRcv = std::bind(&DiagnosticSession::handleMessage, this, std::placeholders::_1);
-	std::function<void(const SerialConnection::ConnectionStatus previous, const SerialConnection::ConnectionStatus current)> statusCng =
+	std::function<void(const Connection::ConnectionStatus previous, const Connection::ConnectionStatus current)> statusCng =
 		std::bind(&DiagnosticSession::handleStatusChange, this, std::placeholders::_1, std::placeholders::_2);
 
 	connection->registerDataRecieveCallback(dataRcv);
@@ -20,12 +20,12 @@ void DiagnosticSession::setConnection(std::shared_ptr<SerialConnection> newConne
 	connection->registerStatusCallback(statusCng);
 
 	if (statusChanged)
-		statusChanged(connection->status());
+		statusChanged(Connection::ConnectionStatus::Disconnected);
 }
 
 void DiagnosticSession::connect()
 {
-	commandExecutor = std::shared_ptr<CommandExecutor>(new CommandExecutor(this, std::shared_ptr<SerialConnection>(connection), projectRoot));
+	commandExecutor = std::shared_ptr<CommandExecutor>(new CommandExecutor(this, std::shared_ptr<Connection>(connection), projectRoot));
 
 	if (connection.get() != nullptr)
 		connection->connect();
@@ -130,7 +130,7 @@ void DiagnosticSession::setCommandsResetEnd(std::function<void()> cb)
 	commandsResetEnd = cb;
 }
 
-void DiagnosticSession::setStatusChanged(std::function<void(std::optional<SerialConnection::ConnectionStatus>)> statusChanged)
+void DiagnosticSession::setStatusChanged(std::function<void(std::optional<Connection::ConnectionStatus>)> statusChanged)
 {
 	this->statusChanged = statusChanged;
 }
@@ -353,7 +353,7 @@ void DiagnosticSession::handleMessage(const Message &msg)
 	}
 }
 
-void DiagnosticSession::handleStatusChange(const SerialConnection::ConnectionStatus status, const SerialConnection::ConnectionStatus current)
+void DiagnosticSession::handleStatusChange(const Connection::ConnectionStatus status, const Connection::ConnectionStatus current)
 {
 	if (connection.get() == nullptr)
 	{
@@ -367,7 +367,7 @@ void DiagnosticSession::handleStatusChange(const SerialConnection::ConnectionSta
 	else
 	{
 		if (statusChanged)
-			statusChanged(std::optional<SerialConnection::ConnectionStatus>(current));
+			statusChanged(std::optional<Connection::ConnectionStatus>(current));
 		return;
 	}
 }

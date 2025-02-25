@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../communication/SerialConnection.hpp"
+#include "../communication/Connection.hpp"
 #include <vector>
 #include <string>
 #include <cstdint>

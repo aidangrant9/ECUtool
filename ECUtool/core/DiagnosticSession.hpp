@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../communication/SerialConnection.hpp"
+#include "../communication/Connection.hpp"
 #include "Command.hpp"
 #include "Message.hpp"
 #include <optional>
@@ -23,7 +23,7 @@ public:
 	DiagnosticSession() = default;
 	~DiagnosticSession() = default;
 
-	void setConnection(std::shared_ptr<SerialConnection> newConnection);
+	void setConnection(std::shared_ptr<Connection> newConnection);
 	void connect();
 	void disconnect();
 
@@ -33,7 +33,7 @@ public:
 	void handleOnDataSent(const DataMessage<uint8_t> &data);
 	void handleOnDataRecieved(const DataMessage<uint8_t> &data);
 	void handleMessage(const Message &msg);
-	void handleStatusChange(const SerialConnection::ConnectionStatus previous, const SerialConnection::ConnectionStatus current);
+	void handleStatusChange(const Connection::ConnectionStatus previous, const Connection::ConnectionStatus current);
 
 	// Qt model specific
 	void setMessageResetStart(std::function<void()> cb);
@@ -41,7 +41,7 @@ public:
 	void setMessageResetEnd(std::function<void()> cb);
 	void setCommandsResetEnd(std::function<void()> cb);
 
-	void setStatusChanged(std::function<void(std::optional<SerialConnection::ConnectionStatus>)> statusChanged);
+	void setStatusChanged(std::function<void(std::optional<Connection::ConnectionStatus>)> statusChanged);
 	
 	std::shared_ptr<Command> loadCommandFromJson(std::string input);
 	void addCommand(std::shared_ptr<Command> c);
@@ -76,11 +76,11 @@ private:
 	std::mutex messageMutex{};
 	std::filesystem::path projectRoot{};
 
-	std::shared_ptr<SerialConnection>   connection{};
+	std::shared_ptr<Connection>   connection{};
 
 	std::function<void()> commandsResetStart{};
 	std::function<void()> commandsResetEnd{};
 	std::function<void()> messageResetStart {};
 	std::function<void()> messageResetEnd{};
-	std::function<void(std::optional<SerialConnection::ConnectionStatus>)> statusChanged{};
+	std::function<void(std::optional<Connection::ConnectionStatus>)> statusChanged{};
 };

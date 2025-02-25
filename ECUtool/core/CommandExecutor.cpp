@@ -7,7 +7,7 @@
 #include <fstream>
 
 
-CommandExecutor::CommandExecutor(DiagnosticSession *session, std::shared_ptr<SerialConnection> connection, std::filesystem::path workpath)
+CommandExecutor::CommandExecutor(DiagnosticSession *session, std::shared_ptr<Connection> connection, std::filesystem::path workpath)
 	: workpath(workpath)
 {
 	if (connection.get() == nullptr)

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>504</width>
-    <height>588</height>
+    <width>500</width>
+    <height>640</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -131,6 +131,16 @@
                </property>
               </widget>
              </item>
+             <item>
+              <widget class="QLabel" name="label_11">
+               <property name="text">
+                <string>Stop Bits</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="stopBitsCombo"/>
+             </item>
             </layout>
            </widget>
           </item>
@@ -180,6 +190,20 @@
                </property>
                <property name="placeholderText">
                 <string>8</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_12">
+               <property name="text">
+                <string>One-wire</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="oneWireCheck">
+               <property name="text">
+                <string>Echo Cancellation</string>
                </property>
               </widget>
              </item>

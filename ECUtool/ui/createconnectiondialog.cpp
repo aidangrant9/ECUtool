@@ -2,10 +2,11 @@
 #include "ui_createconnectiondialog.h"
 #include "PortNames.hpp"
 #include <QRegularExpressionValidator>
-#include "../communication/KLineWindows.hpp"
 #include <nlohmann/json.hpp>
+#include "../communication/KWP2000DL.hpp"
+#include "../../serial/include/serial/serial.h"
 
-CreateConnectionDialog::CreateConnectionDialog(SerialConnection **toConstruct, std::filesystem::path workDir, QWidget *parent)
+CreateConnectionDialog::CreateConnectionDialog(Connection **toConstruct, std::filesystem::path workDir, QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::CreateConnectionDialog)
     , toConstruct(toConstruct)
@@ -37,29 +38,32 @@ CreateConnectionDialog::~CreateConnectionDialog()
 
 void CreateConnectionDialog::populateKLine()
 {
-    std::vector<std::string> portNames = getPortNames();
-    for (auto &s : portNames)
+    std::vector<serial::PortInfo> devices_found = serial::list_ports();
+    for (auto &s : devices_found)
     {
-        ui->portCombo->addItem(s.c_str());
+        ui->portCombo->addItem(s.port.c_str());
     }
 
-    ui->parityCombo->addItem("None", QVariant::fromValue(SerialConnection::Parity::None));
-    ui->parityCombo->addItem("Even", QVariant::fromValue(SerialConnection::Parity::Even));
-    ui->parityCombo->addItem("Odd", QVariant::fromValue(SerialConnection::Parity::Odd));
-    ui->parityCombo->addItem("Mark", QVariant::fromValue(SerialConnection::Parity::Mark));
-    ui->parityCombo->addItem("Space", QVariant::fromValue(SerialConnection::Parity::Space));
+    ui->parityCombo->addItem("None", QVariant::fromValue(serial::parity_none));
+    ui->parityCombo->addItem("Even", QVariant::fromValue(serial::parity_even));
+    ui->parityCombo->addItem("Odd", QVariant::fromValue(serial::parity_odd));
+    ui->parityCombo->addItem("Mark", QVariant::fromValue(serial::parity_mark));
+    ui->parityCombo->addItem("Space", QVariant::fromValue(serial::parity_space));
 
+    ui->stopBitsCombo->addItem("One", QVariant::fromValue(serial::stopbits_one));
+    ui->stopBitsCombo->addItem("One-Five", QVariant::fromValue(serial::stopbits_one_point_five));
+    ui->stopBitsCombo->addItem("Two", QVariant::fromValue(serial::stopbits_two));
 
     QRegularExpressionValidator *oneByteValidator = new QRegularExpressionValidator(QRegularExpression("^[A-Fa-f0-9]{1,2}$"), this);
     QRegularExpressionValidator *u64Validator = new QRegularExpressionValidator(QRegularExpression("^(0|[1-9][0-9]{0,19})$"), this);
 
     // need to make this non-platform specific
-    ui->initModeCombo->addItem("None", QVariant::fromValue(KLine::InitMode::None));
-    ui->initModeCombo->addItem("Fast Init", QVariant::fromValue(KLine::InitMode::FastInit));
-    ui->initModeCombo->addItem("5 Baud", QVariant::fromValue(KLine::InitMode::FiveBaud));
+    ui->initModeCombo->addItem("None", QVariant::fromValue(KWP2000DL::InitMode::None));
+    ui->initModeCombo->addItem("Fast Init", QVariant::fromValue(KWP2000DL::InitMode::FastInit));
+    ui->initModeCombo->addItem("5 Baud", QVariant::fromValue(KWP2000DL::InitMode::FiveBaud));
 
-    ui->addressModeCombo->addItem("Functional", QVariant::fromValue(KLine::AddressingMode::Functional));
-    ui->addressModeCombo->addItem("Physical", QVariant::fromValue(KLine::AddressingMode::Physical));
+    ui->addressModeCombo->addItem("Functional", QVariant::fromValue(KWP2000DL::AddressingMode::Functional));
+    ui->addressModeCombo->addItem("Physical", QVariant::fromValue(KWP2000DL::AddressingMode::Physical));
 
     ui->baudRateEdit->setValidator(u64Validator);
     ui->byteSizeEdit->setValidator(u64Validator);
@@ -94,23 +98,18 @@ void CreateConnectionDialog::onSave()
 void CreateConnectionDialog::connectKLine()
 {
     std::string portName = ui->portCombo->currentText().toStdString();
-    size_t baudRate = ui->baudRateEdit->text().toInt(nullptr, 10);
-    size_t byteSize = ui->byteSizeEdit->text().toInt(nullptr, 10);
-    SerialConnection::Parity parity = ui->parityCombo->currentData().value<SerialConnection::Parity>();
-    KLine::AddressingMode addressingMode = ui->addressModeCombo->currentData().value<KLine::AddressingMode>();
-    KLine::InitMode initMode = ui->initModeCombo->currentData().value<KLine::InitMode>();
+    uint32_t baudRate = ui->baudRateEdit->text().toInt(nullptr, 10);
+    bytesize_t byteSize = static_cast<bytesize_t>(ui->byteSizeEdit->text().toInt(nullptr, 10));
+    serial::parity_t parity = ui->parityCombo->currentData().value<serial::parity_t>();
+    KWP2000DL::AddressingMode addressingMode = ui->addressModeCombo->currentData().value<KWP2000DL::AddressingMode>();
+    KWP2000DL::InitMode initMode = ui->initModeCombo->currentData().value<KWP2000DL::InitMode>();
     uint8_t sourceAddress = ui->sourceAddressEdit->text().toInt(nullptr, 16);
     uint8_t targetAddress = ui->targetAddressEdit->text().toInt(nullptr, 16);
+    stopbits_t stopBits = ui->stopBitsCombo->currentData().value<serial::stopbits_t>();
 
-    if (initMode == KLine::InitMode::None)
-    {
-        // Implement platform specific initialisation here
-        *toConstruct = new KLine(portName, baudRate, byteSize, parity, KLine::StopBits::OneStopBit, true);
-    }
-    else
-    {
-        *toConstruct = new KLine(portName, baudRate, byteSize, parity, KLine::StopBits::OneStopBit, true, initMode, addressingMode, sourceAddress, targetAddress);
-    }
+
+    *toConstruct = new KWP2000DL(portName, baudRate, byteSize, parity, stopBits, serial::flowcontrol_none, ui->oneWireCheck->isChecked(), initMode, addressingMode, sourceAddress, targetAddress);
+
 
     this->close();
 }
@@ -137,7 +136,7 @@ void CreateConnectionDialog::updateConnectionTypeState()
 
 void CreateConnectionDialog::updateInitModeState()
 {
-    bool needsAddress = ui->initModeCombo->currentData().value<KLine::InitMode>() != KLine::InitMode::None;
+    bool needsAddress = ui->initModeCombo->currentData().value<KWP2000DL::InitMode>() != KWP2000DL::InitMode::None;
 
     ui->sourceAddressEdit->setEnabled(needsAddress);
     ui->targetAddressEdit->setEnabled(needsAddress);

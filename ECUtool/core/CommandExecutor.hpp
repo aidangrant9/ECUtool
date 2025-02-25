@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../communication/SerialConnection.hpp"
+#include "../communication/Connection.hpp"
 #include "DiagnosticSession.hpp"
 #include "Command.hpp"
 #include <thread>
@@ -13,7 +13,7 @@ class DiagnosticSession;
 class CommandExecutor
 {
 public:
-	explicit CommandExecutor(DiagnosticSession *session, std::shared_ptr<SerialConnection> connection, std::filesystem::path workpath);
+	explicit CommandExecutor(DiagnosticSession *session, std::shared_ptr<Connection> connection, std::filesystem::path workpath);
 	~CommandExecutor();
 
 	void queueCommand(std::shared_ptr<Command> c);
@@ -23,7 +23,7 @@ private:
 
 	int queueTimeEpsilon = 20;
 	std::filesystem::path workpath{};
-	std::shared_ptr<SerialConnection> connection{};
+	std::shared_ptr<Connection> connection{};
 	DiagnosticSession *session{};
 	std::jthread workThread{};
 	std::mutex commandMutex{};

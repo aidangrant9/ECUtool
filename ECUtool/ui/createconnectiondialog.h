@@ -2,7 +2,7 @@
 #define CREATECONNECTIONDIALOG_H
 
 #include <QDialog>
-#include "../communication/SerialConnection.hpp"
+#include "../communication/Connection.hpp"
 #include <filesystem>
 
 namespace Ui {
@@ -14,7 +14,7 @@ class CreateConnectionDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit CreateConnectionDialog(SerialConnection **toConstruct = nullptr, std::filesystem::path workDir = std::filesystem::current_path(), QWidget *parent = nullptr);
+    explicit CreateConnectionDialog(Connection **toConstruct = nullptr, std::filesystem::path workDir = std::filesystem::current_path(), QWidget *parent = nullptr);
     ~CreateConnectionDialog();
 
     enum class ConnectionTypes
@@ -33,7 +33,7 @@ private:
     void saveKLine();
 
     std::filesystem::path workDir{};
-    SerialConnection **toConstruct = nullptr;
+    Connection **toConstruct = nullptr;
     Ui::CreateConnectionDialog *ui;
 };
 

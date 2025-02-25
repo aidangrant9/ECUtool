@@ -67,13 +67,13 @@ MainWindow::~MainWindow()
 
 void MainWindow::onNewConnection()
 {
-    SerialConnection *newConnection = nullptr;
+    Connection *newConnection = nullptr;
     CreateConnectionDialog dialog(&newConnection, std::filesystem::current_path(), nullptr);
     dialog.exec();
 
     if (newConnection != nullptr)
     {
-        std::shared_ptr<SerialConnection> conPtr(newConnection);
+        std::shared_ptr<Connection> conPtr(newConnection);
 
         diagnosticSession->setConnection(conPtr);
     }
@@ -128,7 +128,7 @@ void MainWindow::onCommandDoubleClicked(const QModelIndex &index)
     diagnosticSession->queueCommand(c);
 }
 
-void MainWindow::onConnectionStatusChange(std::optional<SerialConnection::ConnectionStatus> status)
+void MainWindow::onConnectionStatusChange(std::optional<Connection::ConnectionStatus> status)
 {
     QMetaObject::invokeMethod(this, [=]() {
         if (status == std::nullopt)
@@ -140,17 +140,12 @@ void MainWindow::onConnectionStatusChange(std::optional<SerialConnection::Connec
         {
             switch (status.value())
             {
-            case SerialConnection::ConnectionStatus::Connected:
+            case Connection::ConnectionStatus::Connected:
                 ui->actionConnect->setEnabled(false);
                 ui->actionDisconnect->setEnabled(true);
                 break;
-            case SerialConnection::ConnectionStatus::Disconnected:
+            case Connection::ConnectionStatus::Disconnected:
                 ui->actionConnect->setEnabled(true);
-                ui->actionDisconnect->setEnabled(false);
-                break;
-            case SerialConnection::ConnectionStatus::Error:
-                // Might need changing
-                ui->actionConnect->setEnabled(false);
                 ui->actionDisconnect->setEnabled(false);
                 break;
             }
