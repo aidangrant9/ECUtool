@@ -20,8 +20,15 @@ void KWP2000DL::connect()
 {
 	if (connection.isOpen())
 	{
-		notifyMessageCallback(Message{ Message::MessageType::Error, "Already connected", name() });
-		return;
+		try
+		{
+			connection.close();
+		}
+		catch (...)
+		{
+			notifyMessageCallback(Message{ Message::MessageType::Error, "Please start a new connection", name() });
+			return;
+		}
 	}
 
 	try
@@ -36,19 +43,35 @@ void KWP2000DL::connect()
 	}
 
 	writeQueue.clear(); // Clear anything in the Queue
-	workThread = std::jthread(&KWP2000DL::poll, this); // Start communication
+	workThread = std::jthread(&KWP2000DL::workStart, this); // Start communication
 }
 
 void KWP2000DL::disconnect()
 {
-	if (connection.isOpen())
+	if (connectionStatus == ConnectionStatus::Connected)
 	{
 		workThread.request_stop();
 		workThread.join();
-		connection.close();
+		if (connection.isOpen())
+		{
+			connection.close();
+		}
 	}
 
 	changeConnectionStatus(ConnectionStatus::Disconnected);
+}
+
+void KWP2000DL::workStart()
+{
+	try
+	{
+		poll();
+	}
+	catch (...)
+	{
+		changeConnectionStatus(ConnectionStatus::Disconnected, "Connection Interrupted");
+		return;
+	}
 }
 
 void KWP2000DL::poll()

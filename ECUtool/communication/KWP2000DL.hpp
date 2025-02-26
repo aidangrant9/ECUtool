@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Connection.hpp"
+#include <thread>
 
 using namespace serial;
 
@@ -80,6 +81,7 @@ protected:
 	Serial connection;
 	
 	virtual std::string name() { return std::string{ "KWP2000DL" }; }
+	virtual void workStart();
 	virtual void poll();
 	virtual bool initialise();
 
