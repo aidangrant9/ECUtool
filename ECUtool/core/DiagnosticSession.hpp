@@ -52,6 +52,7 @@ public:
 	void initialiseScript(std::shared_ptr<Command> c);
 
 	std::string stringFromDataVec(std::vector<uint8_t>);
+	std::vector<uint8_t> dataVecFromString(std::string input);
 	void addMessage(std::shared_ptr<Message> c);
 	const std::vector<std::shared_ptr<Message>> &getMessages();
 

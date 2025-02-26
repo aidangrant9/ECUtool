@@ -106,7 +106,10 @@ void MainWindow::onDisconnect()
 
 void MainWindow::onManualEnter()
 {
-    // need to implement
+    std::vector<uint8_t> toSend = diagnosticSession->dataVecFromString(ui->lineEdit->text().toStdString());
+    if (!toSend.empty())
+        diagnosticSession->queueCommand(std::shared_ptr<Command>(new RawCommand("Command Line", 0, toSend)));
+    ui->lineEdit->clear();
 }
 
 void MainWindow::onAddCommand()
