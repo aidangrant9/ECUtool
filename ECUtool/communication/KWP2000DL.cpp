@@ -18,43 +18,74 @@ KWP2000DL::~KWP2000DL()
 
 void KWP2000DL::connect()
 {
-	if (connection.isOpen())
+	if (ConnectionStatus::Connected == connectionStatus)
 	{
 		notifyMessageCallback(Message{ Message::MessageType::Error, "Already connected", name() });
 		return;
 	}
 
-	try
+	if (!connection.isOpen())
 	{
-		connection.setPort(portName);
-		connection.open();
-	}
-	catch (...)
-	{
-		notifyMessageCallback(Message{ Message::MessageType::Error, "Failed to open port", name() });
-		return;
+		try
+		{
+			connection.setPort(portName);
+			connection.open();
+		}
+		catch (...)
+		{
+			notifyMessageCallback(Message{ Message::MessageType::Error, "Failed to open port", name() });
+			return;
+		}
 	}
 
 	writeQueue.clear(); // Clear anything in the Queue
-	workThread = std::jthread(&KWP2000DL::poll, this); // Start communication
+	shouldStop = false;
+	workThread = std::thread(&KWP2000DL::startWork, this); // Start communication
 }
 
 void KWP2000DL::disconnect()
 {
+	shouldStop = true;
+
+	if (workThread.joinable())
+	{
+		workThread.join();
+	}
+
 	if (connection.isOpen())
 	{
-		workThread.request_stop();
-		workThread.join();
-		connection.close();
+		try {
+			connection.close();
+		}
+		catch(...){}
 	}
 
 	changeConnectionStatus(ConnectionStatus::Disconnected);
 }
 
+void KWP2000DL::startWork()
+{
+	try
+	{
+		poll();
+	}
+	catch (...)
+	{
+		if (connection.isOpen())
+		{
+			try {
+				connection.close();
+			}
+			catch (...) {}
+		}
+
+		changeConnectionStatus(ConnectionStatus::Disconnected, "Connection Interrupted");
+		return;
+	}
+}
+
 void KWP2000DL::poll()
 {
-	std::stop_token st = workThread.get_stop_token();
-
 	// Initialise the connection
 	if (!initialise())
 	{
@@ -70,7 +101,7 @@ void KWP2000DL::poll()
 
 	while (true) // Polling loop
 	{
-		if (st.stop_requested()) // Todo: can add StopConnection?
+		if (shouldStop == true) // Todo: can add StopConnection?
 		{
 			return;
 		}

@@ -20,12 +20,13 @@ CommandExecutor::CommandExecutor(DiagnosticSession *session, std::shared_ptr<Con
 	else
 		this->session = session;
 
-	workThread = std::jthread(&CommandExecutor::work, this);
+	shouldStop = false;
+	workThread = std::thread(&CommandExecutor::work, this);
 }
 
 CommandExecutor::~CommandExecutor()
 {
-	workThread.request_stop();
+	shouldStop = true;
 	workThread.join();
 }
 
@@ -144,11 +145,9 @@ void CommandExecutor::runLua(std::filesystem::path file)
 
 void CommandExecutor::work()
 {
-	std::stop_token st = workThread.get_stop_token();
-
 	while (true)
 	{
-		if (st.stop_requested())
+		if (shouldStop)
 		{
 			// cleanup
 			return;

@@ -6,6 +6,7 @@
 #include <thread>
 #include <filesystem>
 #include <mutex>
+#include <atomic>
 #include <chrono>
 
 class DiagnosticSession;
@@ -25,7 +26,8 @@ private:
 	std::filesystem::path workpath{};
 	std::shared_ptr<Connection> connection{};
 	DiagnosticSession *session{};
-	std::jthread workThread{};
+	std::thread workThread{};
+	std::atomic<bool> shouldStop{ false };
 	std::mutex commandMutex{};
 	std::deque<std::pair<std::shared_ptr<Command>,
 		std::chrono::time_point<std::chrono::steady_clock>>> repeatingCommands{};

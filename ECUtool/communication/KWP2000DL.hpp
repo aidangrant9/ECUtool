@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Connection.hpp"
+#include <atomic>
 
 using namespace serial;
 
@@ -71,7 +72,8 @@ protected:
 	TimingParams timingParams{};
 
 	// Thread for async IO
-	std::jthread workThread;
+	std::thread workThread;
+	std::atomic<bool> shouldStop{ false };
 
 	// Queue for echo cancellation
 	std::deque<DataMessage<uint8_t>> sent{};
@@ -80,6 +82,7 @@ protected:
 	Serial connection;
 	
 	virtual std::string name() { return std::string{ "KWP2000DL" }; }
+	virtual void startWork();
 	virtual void poll();
 	virtual bool initialise();
 
