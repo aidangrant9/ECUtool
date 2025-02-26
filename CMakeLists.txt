@@ -36,6 +36,10 @@ endif()
 add_subdirectory(ECUtool)
 add_subdirectory(serial)
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
+    target_compile_options(ecutoolapp PRIVATE -fexperimental-library)
+endif()
+
 target_link_libraries(ecutoolapp PRIVATE Qt6::Widgets Qt6::Core nlohmann_json::nlohmann_json lua serial)
-target_include_directories(ecutoolapp INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/ecutoolapp_autogen/include)
+target_include_directories(ecutoolapp PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/ecutoolapp_autogen/include ${CMAKE_SOURCE_DIR}/ECUtool/ui)
 target_compile_definitions(ecutoolapp PRIVATE ECUtool_VERSION_STRING="${ECUtool_VERSION_MAJOR}.${ECUtool_VERSION_MINOR}.${ECUtool_VERSION_PATCH}")
