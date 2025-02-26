@@ -18,52 +18,50 @@ KWP2000DL::~KWP2000DL()
 
 void KWP2000DL::connect()
 {
-	if (ConnectionStatus::Connected == connectionStatus)
-	{
-		notifyMessageCallback(Message{ Message::MessageType::Error, "Already connected", name() });
-		return;
-	}
-
-	if (!connection.isOpen())
+	if (connection.isOpen())
 	{
 		try
 		{
-			connection.setPort(portName);
-			connection.open();
+			connection.close();
 		}
 		catch (...)
 		{
-			notifyMessageCallback(Message{ Message::MessageType::Error, "Failed to open port", name() });
+			notifyMessageCallback(Message{ Message::MessageType::Error, "Please start a new connection", name() });
 			return;
 		}
 	}
 
+	try
+	{
+		connection.setPort(portName);
+		connection.open();
+	}
+	catch (...)
+	{
+		notifyMessageCallback(Message{ Message::MessageType::Error, "Failed to open port", name() });
+		return;
+	}
+
 	writeQueue.clear(); // Clear anything in the Queue
-	shouldStop = false;
-	workThread = std::thread(&KWP2000DL::startWork, this); // Start communication
+	workThread = std::jthread(&KWP2000DL::workStart, this); // Start communication
 }
 
 void KWP2000DL::disconnect()
 {
-	shouldStop = true;
-
-	if (workThread.joinable())
+	if (connectionStatus == ConnectionStatus::Connected)
 	{
+		workThread.request_stop();
 		workThread.join();
-	}
-
-	if (connection.isOpen())
-	{
-		try {
+		if (connection.isOpen())
+		{
 			connection.close();
 		}
-		catch(...){}
 	}
 
 	changeConnectionStatus(ConnectionStatus::Disconnected);
 }
 
-void KWP2000DL::startWork()
+void KWP2000DL::workStart()
 {
 	try
 	{
@@ -71,14 +69,6 @@ void KWP2000DL::startWork()
 	}
 	catch (...)
 	{
-		if (connection.isOpen())
-		{
-			try {
-				connection.close();
-			}
-			catch (...) {}
-		}
-
 		changeConnectionStatus(ConnectionStatus::Disconnected, "Connection Interrupted");
 		return;
 	}
@@ -86,6 +76,8 @@ void KWP2000DL::startWork()
 
 void KWP2000DL::poll()
 {
+	std::stop_token st = workThread.get_stop_token();
+
 	// Initialise the connection
 	if (!initialise())
 	{
@@ -101,7 +93,7 @@ void KWP2000DL::poll()
 
 	while (true) // Polling loop
 	{
-		if (shouldStop == true) // Todo: can add StopConnection?
+		if (st.stop_requested()) // Todo: can add StopConnection?
 		{
 			return;
 		}
