@@ -278,7 +278,7 @@ bool KWP2000DL::fiveBaudInit()
 	this_thread::sleep_for(chrono::milliseconds(200));
 
 	chrono::time_point t2 = chrono::steady_clock::now();
-	notifyMessageCallback(Message{ Message::MessageType::Info, format("waited for {:d}ms", chrono::duration_cast<chrono::milliseconds>(t2 - t1).count()), name() });
+	notifyMessageCallback(Message{ Message::MessageType::Info, format("Send took +{:d}ms", chrono::duration_cast<chrono::milliseconds>(t2 - t1).count()-2000), name() });
 
 	// Clear line
 	connection.flush();
