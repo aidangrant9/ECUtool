@@ -367,6 +367,9 @@ void DiagnosticSession::handleMessage(const Message &msg)
 	case Message::MessageType::Error:
 		errorMessage(msg.msg, msg.source);
 		break;
+	case Message::MessageType::Info:
+		infoMessage(msg.msg, msg.source);
+		break;
 	}
 }
 

@@ -246,6 +246,7 @@ bool KWP2000DL::fiveBaudInit()
 
 	this_thread::sleep_for(chrono::milliseconds(W5_MIN)); // IDLE
 
+	chrono::time_point t1 = chrono::steady_clock::now();
 	connection.setBreak(true);
 	this_thread::sleep_for(chrono::milliseconds(200)); // Start bit
 
@@ -275,6 +276,9 @@ bool KWP2000DL::fiveBaudInit()
 	// Send stop bit
 	connection.setBreak(false);
 	this_thread::sleep_for(chrono::milliseconds(200));
+
+	chrono::time_point t2 = chrono::steady_clock::now();
+	notifyMessageCallback(Message{ Message::MessageType::Info, format("waited for {:d}ms", chrono::duration_cast<chrono::milliseconds>(t2 - t1).count()), name() });
 
 	// Clear line
 	connection.flush();
@@ -369,6 +373,7 @@ bool KWP2000DL::fiveBaudInit()
 		return false;
 	}
 
+	notifyMessageCallback(Message{ Message::MessageType::Info, format("5-Baud Init successful, got Key Byte 0x{:x}", keyByte1.value()), name() });
 	return true;
 }
 
