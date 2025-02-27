@@ -246,13 +246,9 @@ bool KWP2000DL::fiveBaudInit()
 
 	this_thread::sleep_for(chrono::milliseconds(W5_MIN)); // IDLE
 
-	chrono::time_point t1 = chrono::steady_clock::now();
-	connection.setBreak(true);
-	this_thread::sleep_for(chrono::milliseconds(200)); // Start bit
-
 	uint8_t address = sourceAddress.value_or(0x33);
 	uint8_t addressParity = 0x0;
-	
+
 	if (addressingMode.value() == AddressingMode::Physical)
 	{
 		for (int i = 0; i < 7; i++)
@@ -262,23 +258,30 @@ bool KWP2000DL::fiveBaudInit()
 			address |= 0b10000000; // Add bit to make odd parity
 	}
 
+	chrono::time_point t1 = chrono::steady_clock::now();
+	connection.setBreak(true);
+	this_thread::sleep_for(chrono::milliseconds(200)); // Start bit
+
 	// Send address byte LSB first
 	for (int i = 7; i >= 0; i--)
 	{
+		int deviation = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t1).count() - (200 + (200 * (7 - i)));
 		uint8_t toSend = (address >> i) & 0b1;
 		if (toSend)
 			connection.setBreak(false);
 		else
 			connection.setBreak(true);
-		this_thread::sleep_for(chrono::milliseconds(200));
+		this_thread::sleep_for(chrono::milliseconds(200 - deviation));
 	}
 
+	int deviation = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t1).count() - 1800;
 	// Send stop bit
 	connection.setBreak(false);
-	this_thread::sleep_for(chrono::milliseconds(200));
+	this_thread::sleep_for(chrono::milliseconds(200 - deviation));
 
 	chrono::time_point t2 = chrono::steady_clock::now();
-	notifyMessageCallback(Message{ Message::MessageType::Info, format("Send took +{:d}ms", chrono::duration_cast<chrono::milliseconds>(t2 - t1).count()-2000), name() });
+	notifyMessageCallback(Message{ Message::MessageType::Info, format("Send took +{:d}ms", chrono::duration_cast<chrono::milliseconds>(t2 - t1).count() - 2000), name() });
+	notifyMessageCallback(Message{ Message::MessageType::Info, format("Send within +{:.2f}%", 100*(chrono::duration_cast<chrono::milliseconds>(t2 - t1).count()-2000)/2000.f), name() });
 
 	// Clear line
 	connection.flush();
