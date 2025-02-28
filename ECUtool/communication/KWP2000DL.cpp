@@ -213,6 +213,16 @@ bool KWP2000DL::initialise()
 	return true;
 }
 
+void KWP2000DL::busyLoop(chrono::steady_clock::duration e)
+{
+	chrono::time_point t1 = chrono::steady_clock::now();
+	while (true)
+	{
+		if (chrono::steady_clock::now() - t1 > e)
+			return;
+	}
+}
+
 bool KWP2000DL::fiveBaudInit()
 {
 #define W1_MIN 60
@@ -243,7 +253,7 @@ bool KWP2000DL::fiveBaudInit()
 
 	this_thread::sleep_for(chrono::milliseconds(W5_MIN)); // IDLE
 
-	uint8_t address = sourceAddress.value_or(0x33);
+	uint8_t address = targetAddress.value_or(0x33);
 	uint8_t addressParity = 0x0;
 
 	if (addressingMode.value() == AddressingMode::Physical)
@@ -386,11 +396,14 @@ bool KWP2000DL::fastInit()
 
 	this_thread::sleep_for(chrono::milliseconds(W5_MIN)); // Idle for reconnect
 
+	chrono::time_point t1 = chrono::steady_clock::now();
 	// Send wake-up pattern
 	connection.setBreak(true);
-	this_thread::sleep_for(chrono::milliseconds(25));
+	busyLoop(chrono::milliseconds(25));
 	connection.setBreak(false);
-	this_thread::sleep_for(chrono::milliseconds(25));
+	busyLoop(chrono::milliseconds(25));
+
+	notifyMessageCallback(Message{ Message::MessageType::Info, format("WUP took {:d}ms", chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t1).count()), name() });
 
 	if (!(addressingMode.has_value() && sourceAddress.has_value() && targetAddress.has_value()))
 	{
@@ -485,7 +498,8 @@ bool KWP2000DL::writeWithInnerByteDelay(const std::vector<uint8_t> &data, uint32
 	{
 		if (connection.write(&data[i], 1) != 1)
 			return false;
-		this_thread::sleep_for(chrono::milliseconds(delay));
+		if(delay > 0)
+			busyLoop(chrono::milliseconds(delay));
 	}
 	if (connection.write(&data[data.size() - 1], 1) != 1)
 		return false;
