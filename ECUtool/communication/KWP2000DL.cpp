@@ -122,6 +122,11 @@ void KWP2000DL::poll()
 			{
 				notifyMessageCallback(Message{ Message::MessageType::Error, format("Failed to send message <{:d}>", messageToSend.id), name()});
 			}
+			else
+			{
+				didWrite = true;
+				toSend.pop_front(); // Remove message from send queue
+			}
 			if (echoCancellation)
 			{
 				Timeout t = Timeout(timingParams.P4_MIN_DEFAULT, timingParams.P4_MIN_DEFAULT, 0, 0, 0);
@@ -137,18 +142,10 @@ void KWP2000DL::poll()
 					notifyMessageCallback(Message{ Message::MessageType::Error, format("Message <{:d}> echo mismatch", messageToSend.id), name() });
 					connection.flush();
 				}
-				else
-				{
-					didWrite = true;
-					notifyDataSentCallback(messageToSend);
-					toSend.pop_front(); // Remove message from send queue
-				}
 			}
 			else
 			{
-				didWrite = true;
 				notifyDataSentCallback(messageToSend);
-				toSend.pop_front(); // Remove message from send queue
 			}
 		}
 
