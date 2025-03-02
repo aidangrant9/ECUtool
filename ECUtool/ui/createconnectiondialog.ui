@@ -242,7 +242,7 @@
           <item>
            <widget class="QComboBox" name="addressModeCombo">
             <property name="enabled">
-             <bool>false</bool>
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -265,7 +265,7 @@
                 <item>
                  <widget class="QLineEdit" name="sourceAddressEdit">
                   <property name="enabled">
-                   <bool>false</bool>
+                   <bool>true</bool>
                   </property>
                   <property name="placeholderText">
                    <string>00</string>
@@ -277,6 +277,9 @@
              </item>
              <item>
               <widget class="QWidget" name="widget_5" native="true">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
                <layout class="QVBoxLayout" name="verticalLayout_7">
                 <item>
                  <widget class="QLabel" name="label_9">
@@ -291,7 +294,7 @@
                 <item>
                  <widget class="QLineEdit" name="targetAddressEdit">
                   <property name="enabled">
-                   <bool>false</bool>
+                   <bool>true</bool>
                   </property>
                   <property name="placeholderText">
                    <string>00</string>

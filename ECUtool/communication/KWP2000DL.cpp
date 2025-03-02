@@ -1,6 +1,7 @@
 #include "KWP2000DL.hpp"
 #include <thread>
 #include "VecStream.hpp"
+#include <QApplication>
 
 using namespace std;
 
@@ -74,6 +75,21 @@ void KWP2000DL::workStart()
 	}
 }
 
+void KWP2000DL::bindToLua(sol::state &s)
+{
+	s.new_usertype<KWP2000DL>("connection",
+		"name", &KWP2000DL::name,
+		"write", &KWP2000DL::writeVec,
+		"readOrTimeout", &KWP2000DL::readOrTimeout,
+		"busyLoop", [this](uint32_t ms){busyLoop(std::chrono::milliseconds(ms));},
+		"keyByte", [this]() {return keyByte1.value_or(-1);},
+		"functionalAddressing", [this]() {return addressingMode == AddressingMode::Functional;},
+		"sourceAddress", [this]() {return sourceAddress.value_or(0);},
+		"targetAddress", [this]() {return targetAddress.value_or(0);});
+
+	s["connection"] = this;
+}
+
 void KWP2000DL::poll()
 {
 	std::stop_token st = workThread.get_stop_token();
@@ -132,7 +148,7 @@ void KWP2000DL::poll()
 				Timeout t = Timeout(timingParams.P4_MIN_DEFAULT, timingParams.P4_MIN_DEFAULT, 0, 0, 0);
 				connection.setTimeout(t);
 				vector<uint8_t> echo{};
-				if (!connection.read(echo, messageToSend.data.size())) // Try to read echo
+				if (connection.read(echo, messageToSend.data.size()) != messageToSend.data.size()) // Try to read echo
 				{
 					notifyMessageCallback(Message{ Message::MessageType::Error, format("Failed to read message <{:d}> echo", messageToSend.id), name() });
 					connection.flush();
@@ -181,7 +197,7 @@ void KWP2000DL::poll()
 
 		if (didRead)
 		{
-			this_thread::sleep_for(chrono::milliseconds(timingParams.P3_MIN_DEFAULT - timingParams.P2_MAX_DEFAULT));
+			busyLoop(chrono::milliseconds(timingParams.P3_MIN_DEFAULT - timingParams.P2_MAX_DEFAULT));
 		}
 	}
 }
@@ -213,16 +229,6 @@ bool KWP2000DL::initialise()
 	return true;
 }
 
-void KWP2000DL::busyLoop(chrono::steady_clock::duration e)
-{
-	chrono::time_point t1 = chrono::steady_clock::now();
-	while (true)
-	{
-		if (chrono::steady_clock::now() - t1 > e)
-			return;
-	}
-}
-
 bool KWP2000DL::fiveBaudInit()
 {
 #define W1_MIN 60
@@ -234,7 +240,7 @@ bool KWP2000DL::fiveBaudInit()
 #define W4_MIN 25
 #define W4_MAX 50
 #define W5_MIN 300
-#define EXPECTED_KW2 0xF0
+#define EXPECTED_KW2 0x8F
 
 	// Configure port
 	try 
@@ -270,10 +276,11 @@ bool KWP2000DL::fiveBaudInit()
 	this_thread::sleep_for(chrono::milliseconds(200)); // Start bit
 
 	// Send address byte LSB first
-	for (int i = 7; i >= 0; i--)
+	for (int i = 0; i < 8; i++)
 	{
-		int deviation = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t1).count() - (200 + (200 * (7 - i)));
+		int deviation = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t1).count() - (200 + (200 * (i)));
 		uint8_t toSend = (address >> i) & 0b1;
+		qDebug() << toSend;
 		if (toSend)
 			connection.setBreak(false);
 		else
@@ -449,7 +456,7 @@ bool KWP2000DL::fastInit()
 			notifyMessageCallback(Message{ Message::MessageType::Error, "Failed to read StartCommunication echo", name() });
 			return false;
 		}
-		else if (startCommunicationRequest != startCommunicationRequest)
+		else if (startCommunicationRequest != startCommunicationRequestEcho)
 		{
 			notifyMessageCallback(Message{ Message::MessageType::Error, "StartCommunication Request echo mismatch", name() });
 			return false;
@@ -489,6 +496,7 @@ bool KWP2000DL::fastInit()
 
 	keyByte1 = startCommunicationResponse[4];
 
+	notifyMessageCallback(Message{ Message::MessageType::Info, format("Fast Init successful, got Key Byte 0x{:x}", keyByte1.value()), name() });
 	return true;
 }
 
@@ -518,7 +526,7 @@ bool KWP2000DL::hasValidChecksum(const std::vector<uint8_t> &data)
 
 void KWP2000DL::configureBasedOnKeyByte()
 {
-	if ((keyByte1.value() & 0b00000010) != 0x0)
+	if ((keyByte1.value() & 0b00010000) != 0x0)
 	{ // Extended timing set
 		timingParams.P1_MIN_DEFAULT = 0;
 		timingParams.P1_MIN_LOWER_LIMIT = 0;

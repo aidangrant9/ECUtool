@@ -23,12 +23,10 @@ CreateConnectionDialog::CreateConnectionDialog(Connection **toConstruct, std::fi
     }
 
     connect(ui->connectionTypeCombo, &QComboBox::currentIndexChanged, this, &CreateConnectionDialog::updateConnectionTypeState);
-    connect(ui->initModeCombo, &QComboBox::currentIndexChanged, this, &CreateConnectionDialog::updateInitModeState);
     connect(ui->applyButton, &QPushButton::pressed, this, &CreateConnectionDialog::onApply);
     connect(ui->saveButton, &QPushButton::pressed, this, &CreateConnectionDialog::onSave);
 
     updateConnectionTypeState();
-    updateInitModeState();
 }
 
 CreateConnectionDialog::~CreateConnectionDialog()
@@ -132,13 +130,4 @@ void CreateConnectionDialog::updateConnectionTypeState()
     default:
         break;
     }
-}
-
-void CreateConnectionDialog::updateInitModeState()
-{
-    bool needsAddress = ui->initModeCombo->currentData().value<KWP2000DL::InitMode>() != KWP2000DL::InitMode::None;
-
-    ui->sourceAddressEdit->setEnabled(needsAddress);
-    ui->targetAddressEdit->setEnabled(needsAddress);
-    ui->addressModeCombo->setEnabled(needsAddress);
 }

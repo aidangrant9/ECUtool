@@ -85,8 +85,8 @@ protected:
 	virtual void poll();
 	virtual bool initialise();
 	virtual void workStart();
+	virtual void bindToLua(sol::state &s) override;
 
-	void busyLoop(std::chrono::steady_clock::duration e);
 	virtual bool fiveBaudInit();
 	virtual bool fastInit();
 	virtual bool writeWithInnerByteDelay(const std::vector<uint8_t> &data, uint32_t delay);

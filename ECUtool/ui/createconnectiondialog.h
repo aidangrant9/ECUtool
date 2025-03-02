@@ -26,7 +26,6 @@ public:
 private:
     void populateKLine();
     void updateConnectionTypeState();
-    void updateInitModeState();
     void onApply();
     void onSave();
     void connectKLine();

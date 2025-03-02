@@ -99,7 +99,7 @@ void CommandExecutor::runLua(std::filesystem::path file)
 
 	sol::state lua;
 
-	lua.open_libraries(sol::lib::base, sol::lib::string, sol::lib::table);
+	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::string, sol::lib::table);
 
 	lua.new_usertype<DiagnosticSession>("DiagnosticSession",
 		"errorMessage", &DiagnosticSession::errorMessage,
@@ -107,9 +107,11 @@ void CommandExecutor::runLua(std::filesystem::path file)
 		"readOrTimeout", &DiagnosticSession::readOrTimeout,
 		"send", &DiagnosticSession::send);
 
+	connection->bindToLua(lua);
+
 	lua["session"] = session;
 
-	std::filesystem::path globalsPath = workpath / "global.lua";
+	std::filesystem::path globalsPath = workpath / "globals.lua";
 	std::filesystem::path scriptPath = workpath / "scripts" / file.filename();  // Get filename only
 
 	// Load globals.lua

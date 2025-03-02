@@ -88,10 +88,10 @@ void DiagnosticSession::openProject(const std::filesystem::path &path)
 		std::filesystem::create_directory(projectRoot / "scripts");
 	}
 
-	if (!std::filesystem::exists(projectRoot / "global.lua"))
+	if (!std::filesystem::exists(projectRoot / "globals.lua"))
 	{
 		// create global.lua here
-		std::ofstream globalScript(projectRoot / "global.lua");
+		std::ofstream globalScript(projectRoot / "globals.lua");
 	}
 }
 

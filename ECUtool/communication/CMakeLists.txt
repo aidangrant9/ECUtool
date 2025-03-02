@@ -1,1 +1,1 @@
-target_sources(ecutoolapp PRIVATE KWP2000DL.hpp KWP2000DL.cpp)
+target_sources(ecutoolapp PRIVATE KWP2000DL.hpp KWP2000DL.cpp )
