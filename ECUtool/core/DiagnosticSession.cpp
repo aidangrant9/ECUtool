@@ -347,7 +347,7 @@ void DiagnosticSession::queueCommand(std::shared_ptr<Command> c)
 
 void DiagnosticSession::handleOnDataSent(const DataMessage<uint8_t> &data)
 {
-	dataSentMessage(data, "DiagnosticSession");
+	dataSentMessage(data, "RAW-SENT");
 }
 
 void DiagnosticSession::handleOnDataRecieved(const DataMessage<uint8_t> &data)
@@ -356,7 +356,7 @@ void DiagnosticSession::handleOnDataRecieved(const DataMessage<uint8_t> &data)
 	incomingQueue.push_front(data);
 	incomingMutex.unlock();
 
-	dataRecievedMessage(data, "DiagnosticSession");
+	dataRecievedMessage(data, "RAW-RECIEVE");
 }
 
 // Needs cleaning
