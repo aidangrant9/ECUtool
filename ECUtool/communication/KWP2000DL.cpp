@@ -438,13 +438,13 @@ bool KWP2000DL::fastInit()
 
 	connection.flush(); // flush buffer
 	
-	if (!writeWithInnerByteDelay(startCommunicationRequest, timingParams.P1_MIN_DEFAULT))
+	if (!writeWithInnerByteDelay(startCommunicationRequest, timingParams.P4_MIN_DEFAULT))
 	{
 		notifyMessageCallback(Message{ Message::MessageType::Error, "Failed to send StartCommunication request", name() });
 		return false;
 	}
 	
-	Timeout t = Timeout(timingParams.P1_MAX_DEFAULT, timingParams.P2_MAX_DEFAULT, 0, 0, 0);
+	Timeout t = Timeout(timingParams.P4_MIN_DEFAULT, timingParams.P2_MAX_DEFAULT, 0, 0, 0);
 	connection.setTimeout(t);
 
 	vector<uint8_t> startCommunicationRequestEcho{};
@@ -462,6 +462,9 @@ bool KWP2000DL::fastInit()
 			return false;
 		}
 	}
+
+	t = Timeout(timingParams.P1_MAX_DEFAULT, timingParams.P2_MAX_DEFAULT, 0, 0, 0);
+	connection.setTimeout(t);
 
 	vector<uint8_t> startCommunicationResponse{};
 
