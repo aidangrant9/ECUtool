@@ -3,6 +3,7 @@
 #include "VecStream.hpp"
 #include <QApplication>
 
+
 using namespace std;
 
 KWP2000DL::KWP2000DL(std::string &portName, uint32_t baudRate, bytesize_t byteSize, parity_t parity, stopbits_t stopBits, flowcontrol_t flowControl, bool echoCancellation,
@@ -90,6 +91,7 @@ void KWP2000DL::bindToLua(sol::state &s)
 	s["connection"] = this;
 }
 
+#ifndef NOT_STRICT_TIMING
 void KWP2000DL::poll()
 {
 	std::stop_token st = workThread.get_stop_token();
@@ -145,7 +147,7 @@ void KWP2000DL::poll()
 			}
 			if (echoCancellation)
 			{
-				Timeout t = Timeout(timingParams.P4_MIN_DEFAULT, timingParams.P4_MIN_DEFAULT, 0, 0, 0);
+				Timeout t = Timeout(timingParams.P4_MIN_DEFAULT, timingParams.P4_MAX_DEFAULT, 0, 0, 0);
 				connection.setTimeout(t);
 				vector<uint8_t> echo{};
 				if (connection.read(echo, messageToSend.data.size()) != messageToSend.data.size()) // Try to read echo
@@ -157,6 +159,10 @@ void KWP2000DL::poll()
 				{
 					notifyMessageCallback(Message{ Message::MessageType::Error, format("Message <{:d}> echo mismatch", messageToSend.id), name() });
 					connection.flush();
+				}
+				else 
+				{
+					notifyDataSentCallback(messageToSend);
 				}
 			}
 			else
@@ -201,6 +207,100 @@ void KWP2000DL::poll()
 		}
 	}
 }
+#endif
+
+#ifdef NOT_STRICT_TIMING
+void KWP2000DL::poll()
+{
+	std::stop_token st = workThread.get_stop_token();
+
+	// Initialise the connection
+	if (!initialise())
+	{
+		changeConnectionStatus(ConnectionStatus::Disconnected, "Failed to initialise connection");
+		return;
+	}
+
+	connection.flush();
+
+	deque<DataMessage<uint8_t>> toSend{};
+	deque<DataMessage<uint8_t>> sent{};
+
+	changeConnectionStatus(ConnectionStatus::Connected);
+
+	Timeout t = Timeout(timingParams.P1_MAX_DEFAULT, timingParams.P1_MAX_DEFAULT, 0, 0, 0);
+	connection.setTimeout(t);
+
+	while (true) // Polling loop
+	{
+		if (st.stop_requested()) // Todo: can add StopConnection?
+		{
+			return;
+		}
+		else if (!connection.isOpen())
+		{
+			changeConnectionStatus(ConnectionStatus::Disconnected, "Connection Interrupted");
+			return;
+		}
+
+		writeMutex.lock();
+		if (!writeQueue.empty())
+		{
+			toSend.push_back(writeQueue.front());
+			writeQueue.pop_front();
+		}
+		writeMutex.unlock();
+
+
+		if (!toSend.empty())
+		{
+			DataMessage messageToSend = toSend.front();
+			connection.flush();
+
+			//if (connection.write(messageToSend.data) != messageToSend.data.size())
+			if (!writeWithInnerByteDelay(messageToSend.data, timingParams.P2_MIN_DEFAULT))
+			{
+				notifyMessageCallback(Message{ Message::MessageType::Error, format("Failed to send message <{:d}>", messageToSend.id), name() });
+			}
+			else
+			{
+				if (echoCancellation)
+				{
+					sent.push_front(messageToSend);
+				}
+				else
+				{
+					notifyDataSentCallback(messageToSend);
+				}
+			}
+			toSend.pop_front();
+		}
+		
+		std::vector<uint8_t> read{};
+
+		if (connection.read(read, 260) > 0)
+		{
+			if (echoCancellation)
+			{
+				if (!sent.empty() && read == sent.front().data)
+				{
+					notifyDataSentCallback(sent.front());
+					sent.pop_front();
+				}
+				else
+				{
+					notifyDataRecieveCallback(read);
+				}
+			}
+			else
+			{
+				notifyDataRecieveCallback(read);
+			}
+		}
+
+	}
+}
+#endif
 
 bool KWP2000DL::initialise()
 {
@@ -505,6 +605,7 @@ bool KWP2000DL::fastInit()
 
 bool KWP2000DL::writeWithInnerByteDelay(const std::vector<uint8_t> &data, uint32_t delay)
 {
+	chrono::time_point t1 = chrono::steady_clock::now();
 	for (int i = 0; i < data.size() - 1; i++)
 	{
 		if (connection.write(&data[i], 1) != 1)
@@ -514,6 +615,9 @@ bool KWP2000DL::writeWithInnerByteDelay(const std::vector<uint8_t> &data, uint32
 	}
 	if (connection.write(&data[data.size() - 1], 1) != 1)
 		return false;
+	chrono::time_point t2 = chrono::steady_clock::now();
+	int ms = chrono::duration_cast<chrono::milliseconds>(t2 - t1).count();
+	notifyMessageCallback(Message{ Message::MessageType::Info, format("sent in {:d}ms", ms), name() });
 	return true;
 }
 
