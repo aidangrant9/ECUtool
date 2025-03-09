@@ -92,4 +92,10 @@ protected:
 	virtual bool writeWithInnerByteDelay(const std::vector<uint8_t> &data, uint32_t delay);
 	virtual bool hasValidChecksum(const std::vector<uint8_t> &data);
 	virtual void configureBasedOnKeyByte();
+
+	// Blocking
+	virtual void wakeUpPattern();
+	virtual void sendFiveBaudAddress(uint8_t address, bool functional);
+	virtual bool write(const std::vector<uint8_t> msg, const uint32_t msDelay);
+	virtual std::vector<uint8_t> read();
 };

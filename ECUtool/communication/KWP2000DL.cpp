@@ -3,6 +3,8 @@
 #include "VecStream.hpp"
 #include <QApplication>
 
+//#define REMOVE_LEADING_ZERO
+#define NOT_STRICT_TIMING
 
 using namespace std;
 
@@ -80,13 +82,16 @@ void KWP2000DL::bindToLua(sol::state &s)
 {
 	s.new_usertype<KWP2000DL>("connection",
 		"name", &KWP2000DL::name,
-		"write", &KWP2000DL::writeVec,
+		"write", &KWP2000DL::write,
+		"read", &KWP2000DL::read,
 		"readOrTimeout", &KWP2000DL::readOrTimeout,
 		"busyLoop", [this](uint32_t ms){busyLoop(std::chrono::milliseconds(ms));},
 		"keyByte", [this]() {return keyByte1.value_or(-1);},
 		"functionalAddressing", [this]() {return addressingMode == AddressingMode::Functional;},
 		"sourceAddress", [this]() {return sourceAddress.value_or(0);},
-		"targetAddress", [this]() {return targetAddress.value_or(0);});
+		"targetAddress", [this]() {return targetAddress.value_or(0);},
+		"wakeUpPattern", &KWP2000DL::wakeUpPattern,
+		"sendFiveBaudAddress", &KWP2000DL::sendFiveBaudAddress);
 
 	s["connection"] = this;
 }
@@ -228,7 +233,7 @@ void KWP2000DL::poll()
 
 	changeConnectionStatus(ConnectionStatus::Connected);
 
-	Timeout t = Timeout(timingParams.P1_MAX_DEFAULT, timingParams.P1_MAX_DEFAULT, 0, 0, 0);
+	Timeout t = Timeout(500, 1000, 0, 0, 0);
 	connection.setTimeout(t);
 
 	while (true) // Polling loop
@@ -258,7 +263,7 @@ void KWP2000DL::poll()
 			connection.flush();
 
 			//if (connection.write(messageToSend.data) != messageToSend.data.size())
-			if (!writeWithInnerByteDelay(messageToSend.data, timingParams.P2_MIN_DEFAULT))
+			if (!writeWithInnerByteDelay(messageToSend.data, timingParams.P4_MIN_DEFAULT))
 			{
 				notifyMessageCallback(Message{ Message::MessageType::Error, format("Failed to send message <{:d}>", messageToSend.id), name() });
 			}
@@ -278,24 +283,50 @@ void KWP2000DL::poll()
 		
 		std::vector<uint8_t> read{};
 
-		if (connection.read(read, 260) > 0)
+		if (connection.read(read, 1024) > 0)
 		{
-			if (echoCancellation)
+			if (echoCancellation && !sent.empty())
 			{
-				if (!sent.empty() && read == sent.front().data)
+				auto toCancel = sent.front();
+
+				try
 				{
-					notifyDataSentCallback(sent.front());
-					sent.pop_front();
+					for (int i = 0; i < read.size(); i++)
+					{
+						if (read[i] == toCancel.data[0])
+						{
+							bool matches = true;
+							for (int j = 0; j < toCancel.data.size(); j++)
+							{
+								if (toCancel.data[j] != read[i + j])
+								{
+									matches = false;
+									break;
+								}
+							}
+
+							if (matches)
+							{
+								read.erase(read.begin(), read.begin() + i + toCancel.data.size());
+								sent.pop_front();
+								break;
+							}
+						}
+					}
 				}
-				else
+				catch (...)
 				{
-					notifyDataRecieveCallback(read);
 				}
 			}
-			else
+
+			// Remove leading zero bytes
+			while (!read.empty() && read[0] == 0)
 			{
+				read.erase(read.begin());
+			}
+
+			if(!read.empty())
 				notifyDataRecieveCallback(read);
-			}
 		}
 
 	}
@@ -671,4 +702,158 @@ void KWP2000DL::configureBasedOnKeyByte()
 		timingParams.P4_MAX_DEFAULT = 20;
 		timingParams.P4_MAX_UPPER_LIMIT = 20;
 	}
+}
+
+
+// BLOCKING BASED BELOW (EXPERIMENTAL)
+
+
+bool KWP2000DL::write(const std::vector<uint8_t> msg, const uint32_t msDelay)
+{
+	DataMessage<uint8_t> datamsg = { msg };
+
+	if (!connection.isOpen())
+		return false;
+
+	connection.flush();
+
+	try
+	{
+		for (uint8_t m : datamsg.data)
+		{
+			busyLoop(std::chrono::milliseconds(msDelay));
+			if (connection.write(&m, 1) != 1)
+			{
+				notifyMessageCallback(Message{ Message::MessageType::Error, std::format("Failed to write message {:d}", datamsg.id), name() });
+				return false;
+			}
+		}
+		if (echoCancellation)
+			sent.push_back(datamsg);
+		notifyDataSentCallback(datamsg);
+	}
+	catch (PortNotOpenedException e)
+	{
+		changeConnectionStatus(Connection::ConnectionStatus::Disconnected, "Port not open during write");
+	}
+	catch (...)
+	{
+		notifyMessageCallback(Message{ Message::MessageType::Error, std::format("Failed to write message {:d}", datamsg.id), name() });
+		return false;
+	}
+	return true;
+}
+
+std::vector<uint8_t> KWP2000DL::read()
+{
+	if (!connection.isOpen())
+		return {};
+
+	Timeout t = Timeout(0, 2000, 0, 0, 0);
+	connection.setTimeout(t);
+
+	std::vector<uint8_t> read{};
+	try
+	{
+		connection.read(read, 1024);
+	}
+	catch (PortNotOpenedException e)
+	{
+		changeConnectionStatus(Connection::ConnectionStatus::Disconnected, "Port not open during read");
+	}
+	catch (...)
+	{
+		notifyMessageCallback(Message{ Message::MessageType::Error, "Failed to read message", name() });
+	}
+
+	if (echoCancellation && !sent.empty())
+	{
+		auto toCancel = sent.front();
+
+		try
+		{
+			for (int i = 0; i < read.size(); i++)
+			{
+				if (read[i] == toCancel.data[0])
+				{
+					bool matches = true;
+					for (int j = 0; j < toCancel.data.size(); j++)
+					{
+						if (toCancel.data[j] != read[i + j])
+						{
+							matches = false;
+							break;
+						}
+					}
+
+					if (matches)
+					{
+						read.erase(read.begin(), read.begin() + i + toCancel.data.size());
+						sent.pop_front();
+						break;
+					}
+				}
+			}
+		}
+		catch (...)
+		{
+		}
+	}
+
+	// Remove leading zero bytes
+	while (!read.empty() && read[0] == 0)
+	{
+		read.erase(read.begin());
+	}
+
+	return read;
+}
+
+void KWP2000DL::wakeUpPattern()
+{
+	if (!connection.isOpen())
+		return
+
+		connection.setBreak(true);
+	busyLoop(std::chrono::milliseconds(25));
+	connection.setBreak(false);
+	busyLoop(std::chrono::milliseconds(25));
+}
+
+void KWP2000DL::sendFiveBaudAddress(uint8_t address, bool functional)
+{
+	if (!connection.isOpen())
+		return;
+
+	uint8_t addressParity = 0x0;
+
+	if (!functional)
+	{
+		for (int i = 0; i < 7; i++)
+			addressParity ^= ((address >> i) & 0b1);
+
+		if (!addressParity)
+			address |= 0b10000000; // Add bit to make odd parity
+	}
+
+	std::chrono::time_point t1 = std::chrono::steady_clock::now();
+	connection.setBreak(true);
+	std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Start bit
+
+	// Send address byte LSB first
+	for (int i = 0; i < 8; i++)
+	{
+		int deviation = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t1).count() - (200 + (200 * (i)));
+		uint8_t toSend = (address >> i) & 0b1;
+		if (toSend)
+			connection.setBreak(false);
+		else
+			connection.setBreak(true);
+		std::this_thread::sleep_for(std::chrono::milliseconds(200 - deviation));
+	}
+
+	int deviation = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t1).count() - 1800;
+	// Send stop bit
+	connection.setBreak(false);
+	std::this_thread::sleep_for(std::chrono::milliseconds(200 - deviation));
 }

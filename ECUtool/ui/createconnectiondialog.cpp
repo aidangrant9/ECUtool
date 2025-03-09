@@ -63,8 +63,8 @@ void CreateConnectionDialog::populateKLine()
     ui->initModeCombo->addItem("Fast Init", QVariant::fromValue(KWP2000DL::InitMode::FastInit));
     ui->initModeCombo->addItem("5 Baud", QVariant::fromValue(KWP2000DL::InitMode::FiveBaud));
 
-    ui->addressModeCombo->addItem("Functional", QVariant::fromValue(KWP2000DL::AddressingMode::Functional));
     ui->addressModeCombo->addItem("Physical", QVariant::fromValue(KWP2000DL::AddressingMode::Physical));
+    ui->addressModeCombo->addItem("Functional", QVariant::fromValue(KWP2000DL::AddressingMode::Functional));
 
     ui->baudRateEdit->setValidator(u64Validator);
     ui->byteSizeEdit->setValidator(u64Validator);

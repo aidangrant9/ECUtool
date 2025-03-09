@@ -43,6 +43,6 @@ protected:
 	virtual void bindToLua(sol::state &s) override;
 
 	virtual void wakeUpPattern();
-	virtual bool sendFiveBaudAddress(uint8_t address, bool functional);
+	virtual void sendFiveBaudAddress(uint8_t address, bool functional);
 	virtual bool writeWithInnerByteDelay(const std::vector<uint8_t> &data, uint32_t delay);
 };

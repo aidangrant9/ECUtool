@@ -49,6 +49,8 @@ bool KWP2000GRC::write(const std::vector<uint8_t> msg, const uint32_t msDelay)
 	if (!connection.isOpen())
 		return false;
 
+	connection.flush();
+
 	try
 	{
 		for (uint8_t m : datamsg.data)
@@ -148,18 +150,61 @@ void KWP2000GRC::bindToLua(sol::state &s)
 		"read", &KWP2000GRC::read,
 		"busyLoop", [this](uint32_t ms) {busyLoop(std::chrono::milliseconds(ms));},
 		"sourceAddress", [this]() {return sourceAddress;},
-		"targetAddress", [this]() {return targetAddress;});
+		"targetAddress", [this]() {return targetAddress;},
+		"wakeUpPattern", &KWP2000GRC::wakeUpPattern,
+		"sendFiveBaudAddress", &KWP2000GRC::sendFiveBaudAddress,
+		"functionalAddressing", []() {return false;});
 
 	s["connection"] = this;
 }
 
 void KWP2000GRC::wakeUpPattern()
 {
+	if(!connection.isOpen())
+		return
+
+	connection.setBreak(true);
+	busyLoop(std::chrono::milliseconds(25));
+	connection.setBreak(false);
+	busyLoop(std::chrono::milliseconds(25));
 }
 
-bool KWP2000GRC::sendFiveBaudAddress(uint8_t address, bool functional)
+void KWP2000GRC::sendFiveBaudAddress(uint8_t address, bool functional)
 {
-	return false;
+	if (!connection.isOpen())
+		return;
+
+	uint8_t addressParity = 0x0;
+
+	if (!functional)
+	{
+		for (int i = 0; i < 7; i++)
+			addressParity ^= ((address >> i) & 0b1);
+
+		if (!addressParity)
+			address |= 0b10000000; // Add bit to make odd parity
+	}
+
+	std::chrono::time_point t1 = std::chrono::steady_clock::now();
+	connection.setBreak(true);
+	std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Start bit
+
+	// Send address byte LSB first
+	for (int i = 0; i < 8; i++)
+	{
+		int deviation = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t1).count() - (200 + (200 * (i)));
+		uint8_t toSend = (address >> i) & 0b1;
+		if (toSend)
+			connection.setBreak(false);
+		else
+			connection.setBreak(true);
+		std::this_thread::sleep_for(std::chrono::milliseconds(200 - deviation));
+	}
+
+	int deviation = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t1).count() - 1800;
+	// Send stop bit
+	connection.setBreak(false);
+	std::this_thread::sleep_for(std::chrono::milliseconds(200 - deviation));
 }
 
 bool KWP2000GRC::writeWithInnerByteDelay(const std::vector<uint8_t> &data, uint32_t delay)
