@@ -4,6 +4,7 @@
 #include <QRegularExpressionValidator>
 #include <nlohmann/json.hpp>
 #include "../communication/KWP2000DL.hpp"
+#include "../communication/KWP2000GRC.hpp"
 #include "../../serial/include/serial/serial.h"
 
 CreateConnectionDialog::CreateConnectionDialog(Connection **toConstruct, std::filesystem::path workDir, QWidget *parent)
@@ -17,6 +18,7 @@ CreateConnectionDialog::CreateConnectionDialog(Connection **toConstruct, std::fi
     // Set up types combo
     {
         ui->connectionTypeCombo->addItem("K-Line", QVariant::fromValue(ConnectionTypes::KLine));
+        ui->connectionTypeCombo->addItem("Generic K-Line", QVariant::fromValue(ConnectionTypes::GenKLine));
 
         // How to add additional connection types
         //ui->connectionTypeCombo->addItem("newtype", QVariant::fromValue(ConnectionTypes::Example));
@@ -27,6 +29,7 @@ CreateConnectionDialog::CreateConnectionDialog(Connection **toConstruct, std::fi
     connect(ui->saveButton, &QPushButton::pressed, this, &CreateConnectionDialog::onSave);
 
     updateConnectionTypeState();
+    populateKLine();
 }
 
 CreateConnectionDialog::~CreateConnectionDialog()
@@ -76,6 +79,8 @@ void CreateConnectionDialog::onApply()
     case ConnectionTypes::KLine:
         connectKLine();
         break;
+    case ConnectionTypes::GenKLine:
+        connectGenKLine();
     default:
         break;
     }
@@ -105,10 +110,22 @@ void CreateConnectionDialog::connectKLine()
     uint8_t targetAddress = ui->targetAddressEdit->text().toInt(nullptr, 16);
     stopbits_t stopBits = ui->stopBitsCombo->currentData().value<serial::stopbits_t>();
 
-
     *toConstruct = new KWP2000DL(portName, baudRate, byteSize, parity, stopBits, serial::flowcontrol_none, ui->oneWireCheck->isChecked(), initMode, addressingMode, sourceAddress, targetAddress);
 
+    this->close();
+}
 
+void CreateConnectionDialog::connectGenKLine()
+{
+    std::string portName = ui->portCombo->currentText().toStdString();
+    uint32_t baudRate = ui->baudRateEdit->text().toInt(nullptr, 10);
+    bytesize_t byteSize = static_cast<bytesize_t>(ui->byteSizeEdit->text().toInt(nullptr, 10));
+    serial::parity_t parity = ui->parityCombo->currentData().value<serial::parity_t>();
+    uint8_t sourceAddress = ui->sourceAddressEdit->text().toInt(nullptr, 16);
+    uint8_t targetAddress = ui->targetAddressEdit->text().toInt(nullptr, 16);
+    stopbits_t stopBits = ui->stopBitsCombo->currentData().value<serial::stopbits_t>();
+
+    *toConstruct = new KWP2000GRC(portName, baudRate, byteSize, parity, stopBits, serial::flowcontrol_none, ui->oneWireCheck->isChecked(), sourceAddress, targetAddress);
     this->close();
 }
 
@@ -122,7 +139,9 @@ void CreateConnectionDialog::updateConnectionTypeState()
     {
     case ConnectionTypes::KLine:
         ui->stackedWidget->setCurrentIndex(0);
-        populateKLine();
+        break;
+    case ConnectionTypes::GenKLine:
+        ui->stackedWidget->setCurrentIndex(0);
         break;
     case ConnectionTypes::Example:
         ui->stackedWidget->setCurrentIndex(1);
