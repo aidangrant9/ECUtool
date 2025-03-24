@@ -8,7 +8,7 @@ class Buffer
 {
 public:
 	explicit Buffer(size_t capacity)
-		: capacity{capacity}, head{0}, size{0}
+		: capacity{capacity}, head{0}, c_size{0}
 	{
 		buffer.resize(capacity);
 	}
@@ -18,29 +18,29 @@ public:
 		buffer[head] = elem;
 		head = (head + 1) % capacity;
 		
-		if (size != capacity)
+		if (c_size != capacity)
 		{
-			size++;
+			c_size++;
 		}
 	}
 
 	size_t size() const
 	{
-		return size;
+		return c_size;
 	}
 
 	T &operator[](const size_t idx)
 	{
-		if (idx >= size)
+		if (idx >= c_size)
 			throw std::out_of_range("index out of range");
 
-		return buffer[(head + idx + capacity - size) % capacity];
+		return buffer[(head + idx + capacity - c_size) % capacity];
 	}
 
 
 private:
 	std::vector<T> buffer{};
 	size_t head;
-	size_t size;
+	size_t c_size;
 	size_t capacity;
 };

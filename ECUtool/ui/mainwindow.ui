@@ -79,7 +79,20 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="MessageView" name="messageView"/>
+        <widget class="QPlainTextEdit" name="terminalTextEdit">
+         <property name="undoRedoEnabled">
+          <bool>false</bool>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+         <property name="plainText">
+          <string notr="true"/>
+         </property>
+         <property name="placeholderText">
+          <string notr="true"/>
+         </property>
+        </widget>
        </item>
        <item>
         <widget class="QLineEdit" name="lineEdit"/>
@@ -172,11 +185,6 @@
   </action>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>MessageView</class>
-   <extends>QListView</extends>
-   <header>messageview.h</header>
-  </customwidget>
   <customwidget>
    <class>CommandView</class>
    <extends>QListView</extends>

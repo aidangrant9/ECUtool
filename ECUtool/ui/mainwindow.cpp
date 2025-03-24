@@ -3,13 +3,12 @@
 #include "createconnectiondialog.h"
 #include "commandmodel.h"
 #include "commanddelegate.h"
-#include "messagemodel.h"
-#include "messagedelegate.h"
 #include "commandnew.h"
 #include <QDebug>
 #include <QFileDialog>
 #include "../core/RawCommand.hpp"
 #include <QRegularExpressionValidator>
+#include <QRegularExpression>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -25,6 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Set connection change callback
     diagnosticSession->setStatusChanged(std::bind(&MainWindow::onConnectionStatusChange, this, std::placeholders::_1));
+    logger.setMessageCallback(std::bind(&MainWindow::onMessage, this, std::placeholders::_1));
 
     CommandModel *commandView = new CommandModel(diagnosticSession, this);
     CommandDelegate * delegate = new CommandDelegate(this);
@@ -37,27 +37,13 @@ MainWindow::MainWindow(QWidget *parent)
     ui->listView->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->listView->setViewMode(QListView::ListMode);
 
-
-    MessageModel *messageView = new MessageModel(diagnosticSession, this);
-    MessageDelegate *messageDelegate = new MessageDelegate(this);
-
-    ui->messageView->setModel(messageView);
-    ui->messageView->setItemDelegate(messageDelegate);
-    ui->messageView->setResizeMode(QListView::Adjust);
-
     connect(ui->actionNewConnection, &QAction::triggered, this, &MainWindow::onNewConnection);
     connect(ui->actionOpenProject, &QAction::triggered, this, &MainWindow::onOpenProject);
     connect(ui->actionSaveProject, &QAction::triggered, this, &MainWindow::onSaveProject);
     connect(ui->actionConnect, &QAction::triggered, this, &MainWindow::onConnect);
     connect(ui->actionDisconnect, &QAction::triggered, this, &MainWindow::onDisconnect);
-    connect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::onManualEnter);
     connect(ui->addCommandButton, &QPushButton::pressed, this, &MainWindow::onAddCommand);
     connect(ui->listView, &QListView::activated, this, &MainWindow::onCommandDoubleClicked);
-    connect(messageView, &MessageModel::messagesUpdated, this, [this]() {
-        QScrollBar *scrollBar = ui->messageView->verticalScrollBar();
-        if (scrollBar->value() == scrollBar->maximum()) {
-            ui->messageView->scrollToBottom();
-        }});
 }
 
 MainWindow::~MainWindow()
@@ -104,14 +90,6 @@ void MainWindow::onDisconnect()
     diagnosticSession->disconnect();
 }
 
-void MainWindow::onManualEnter()
-{
-    std::vector<uint8_t> toSend = diagnosticSession->dataVecFromString(ui->lineEdit->text().toStdString());
-    if (!toSend.empty())
-        diagnosticSession->queueCommand(std::shared_ptr<Command>(new RawCommand("Command Line", 0, toSend)));
-    ui->lineEdit->clear();
-}
-
 void MainWindow::onAddCommand()
 {
     Command *editedCommand;
@@ -123,6 +101,59 @@ void MainWindow::onAddCommand()
         std::shared_ptr<Command> newCommand{ editedCommand };
         diagnosticSession->addCommand(newCommand);
     }
+}
+
+void MainWindow::onMessage(std::shared_ptr<Message> m)
+{
+    // Handle logger message
+    QMetaObject::invokeMethod(this, [=]() {
+        ui->terminalTextEdit->appendPlainText("");
+        addMessage(m);
+        }, Qt::QueuedConnection);
+}
+
+void MainWindow::addMessage(std::shared_ptr<Message> m)
+{
+    QColor defaultColor = ui->terminalTextEdit->palette().color(QPalette::Text);
+
+    QTextCharFormat format = ui->terminalTextEdit->currentCharFormat();
+    QTextCursor cursor = ui->terminalTextEdit->textCursor();
+    cursor.movePosition(QTextCursor::End);
+
+    format.setForeground(Qt::gray);
+    cursor.insertText(QString::fromStdString(std::format("[{:s}] [{:s}]\n", m->timeString, m->source)), format);
+
+    QRegularExpression tagRegex("<#(default|[0-9A-Fa-f]{6})>");
+    int lastIndex = 0;
+    QString msg = QString::fromStdString(m->msg);
+    QRegularExpressionMatchIterator it = tagRegex.globalMatch(msg);
+
+    QColor currentCol = defaultColor;
+
+    while (it.hasNext()) {
+        QRegularExpressionMatch match = it.next();
+        int index = match.capturedStart();
+
+        QString fragment = msg.mid(lastIndex, index - lastIndex);
+        format.setForeground(currentCol);
+        cursor.insertText(fragment, format);
+
+        QString tagContent = match.captured(1);
+        if (tagContent.toLower() == "default") {
+            currentCol = defaultColor;
+        }
+        else {
+            currentCol = QColor("#" + tagContent);
+        }
+        lastIndex = match.capturedEnd();
+    }
+
+    QString remainder = msg.mid(lastIndex);
+    format.setForeground(currentCol);
+    cursor.insertText(remainder, format);
+
+    cursor.insertText("\n");
+    ui->terminalTextEdit->setTextCursor(cursor);
 }
 
 void MainWindow::onCommandDoubleClicked(const QModelIndex &index)

@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QLabel>
 #include "../core/DiagnosticSession.hpp"
+#include "../core/Logger.hpp"
 
 namespace Ui {
 class MainWindow;
@@ -24,11 +25,13 @@ private:
     void onSaveProject();
     void onConnect();
     void onDisconnect();
-    void onManualEnter();
     void onAddCommand();
+    void onMessage(std::shared_ptr<Message> m);
+    void addMessage(std::shared_ptr<Message> m);
     void onCommandDoubleClicked(const QModelIndex &index);
     void onConnectionStatusChange(std::optional<Connection::ConnectionStatus>);
     QLabel *statusLabel;
+    Logger &logger = Logger::instance();
     Ui::MainWindow *ui;
 };
 

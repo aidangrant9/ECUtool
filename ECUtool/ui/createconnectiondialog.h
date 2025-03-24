@@ -20,7 +20,6 @@ public:
     enum class ConnectionTypes
     {
         KLine,
-        GenKLine,
         Example
     };
 
@@ -30,7 +29,6 @@ private:
     void onApply();
     void onSave();
     void connectKLine();
-    void connectGenKLine();
     void saveKLine();
 
     std::filesystem::path workDir{};

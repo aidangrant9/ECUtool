@@ -21,7 +21,7 @@ public:
 	void runLua(std::filesystem::path file);
 private:
 	void work();
-
+	Logger &logger = Logger::instance();
 	int queueTimeEpsilon = 20;
 	std::filesystem::path workpath{};
 	std::shared_ptr<Connection> connection{};

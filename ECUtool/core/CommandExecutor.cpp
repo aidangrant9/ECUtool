@@ -5,6 +5,7 @@
 #include "sol/sol.hpp"
 #include <QDebug>
 #include <fstream>
+#include "Logger.hpp"
 
 
 CommandExecutor::CommandExecutor(DiagnosticSession *session, std::shared_ptr<Connection> connection, std::filesystem::path workpath)
@@ -44,68 +45,17 @@ void CommandExecutor::queueCommand(std::shared_ptr<Command> c)
 
 void CommandExecutor::runLua(std::filesystem::path file)
 {
-	/*
-	sol::state lua;
-
-	lua.open_libraries(sol::lib::base, sol::lib::string, sol::lib::table);
-
-	lua.new_usertype<DiagnosticSession>("DiagnosticSession",
-		"errorMessage", &DiagnosticSession::errorMessage,
-		"infoMessage", &DiagnosticSession::infoMessage,
-		"readOrTimeout", &DiagnosticSession::readOrTimeout,
-		"send", &DiagnosticSession::send);
-
-	lua["session"] = session;
-
-	std::filesystem::path globalsPath = workpath / "global.lua";
-	std::filesystem::path scriptPath = workpath / "scripts" / file.filename();  // Use file.filename() to get just the filename
-
-	sol::load_result globals = lua.load_file(globalsPath.string());
-	sol::load_result script = lua.load_file(scriptPath.string());
-
-	//session->infoMessage("Loading globals from: " + globalsPath.string(), "Lua");
-	//session->infoMessage("Loading script from: " + scriptPath.string(), "Lua");
-	
-
-	if (!globals.valid() || !script.valid())
-	{
-		session->errorMessage("Failed to load script", file.filename().string());
-		return;
-	}
-
-	sol::protected_function entryFunc = lua["entry"];
-
-	if (!entryFunc.valid())
-	{
-		session->errorMessage("No entry() defined in the script", file.filename().string());
-		return;
-	}
-
-	auto res = entryFunc();
-
-
-
-	auto result = lua.safe_script("entry()");
-
-	if (!result.valid())
-	{
-		sol::error err = result;
-		session->errorMessage(err.what(), scriptPath.filename().string());
-	}
-
-
-	return;
-	*/
-
 	sol::state lua;
 
 	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::string, sol::lib::table);
 
-	lua.new_usertype<DiagnosticSession>("DiagnosticSession",
-		"errorMessage", &DiagnosticSession::errorMessage,
-		"infoMessage", &DiagnosticSession::infoMessage,
-		"readOrTimeout", &DiagnosticSession::readOrTimeout,
-		"send", &DiagnosticSession::send);
+	lua.new_usertype<Logger>("log",
+		"info", [this](Logger *e, const std::string &msg, const std::string &src) {e->addMessage(Message{ msg, src });},
+		"error", [this](Logger *e, const std::string &msg, const std::string &src) {e->addErrorMessage(Message{ msg, src });}
+	);
+
+	lua["log"] = &logger;
+
 
 	connection->bindToLua(lua);
 
@@ -118,7 +68,7 @@ void CommandExecutor::runLua(std::filesystem::path file)
 	sol::protected_function_result globalsResult = lua.safe_script_file(globalsPath.string(), sol::script_pass_on_error);
 	if (!globalsResult.valid()) {
 		sol::error err = globalsResult;
-		session->errorMessage("Error loading globals.lua: " + std::string(err.what()), globalsPath.filename().string());
+		logger.addErrorMessage(Message{"Error loading globals.lua: " + std::string(err.what()), globalsPath.filename().string()});
 		return;
 	}
 
@@ -126,14 +76,14 @@ void CommandExecutor::runLua(std::filesystem::path file)
 	sol::protected_function_result scriptResult = lua.safe_script_file(scriptPath.string(), sol::script_pass_on_error);
 	if (!scriptResult.valid()) {
 		sol::error err = scriptResult;
-		session->errorMessage("Error loading script: " + std::string(err.what()), scriptPath.filename().string());
+		logger.addErrorMessage(Message{ "Error loading script: " + std::string(err.what()), globalsPath.filename().string() });
 		return;
 	}
 
 	// Get entry function safely
 	sol::protected_function entryFunc = lua["entry"];
 	if (!entryFunc.valid()) {
-		session->errorMessage("No entry() function found in script", scriptPath.filename().string());
+		logger.addErrorMessage(Message{ "No entry() function found", globalsPath.filename().string() });
 		return;
 	}
 
@@ -141,7 +91,7 @@ void CommandExecutor::runLua(std::filesystem::path file)
 	sol::protected_function_result res = entryFunc();
 	if (!res.valid()) {
 		sol::error err = res;
-		session->errorMessage("Error executing entry(): " + std::string(err.what()), scriptPath.filename().string());
+		logger.addErrorMessage(Message{ "Error executing entry()" + std::string(err.what()), globalsPath.filename().string() });
 	}
 }
 
@@ -198,13 +148,12 @@ void CommandExecutor::work()
 				}
 				else
 				{
-					session->errorMessage("Couldn't find " + scriptPath.string() + " , no such file exists", "CommandExecutor");
+					logger.addErrorMessage(Message{ "Couldn't find " + scriptPath.string() + " , no such file exists", "CommandExecutor" });
 				}
 			}
 			if (auto raw = dynamic_cast<RawCommand *>(toRun.get()))
 			{
-				DataMessage<uint8_t> toSend(raw->msg);
-				connection->write(toSend);
+				connection->write(raw->msg);
 			}
 		}
 
