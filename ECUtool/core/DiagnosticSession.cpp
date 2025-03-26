@@ -3,23 +3,25 @@
 #include "RawCommand.hpp"
 #include "ScriptCommand.hpp"
 #include <fstream>
+#include <unordered_set>
+
+DiagnosticSession::DiagnosticSession(std::function<void(const Connection::ConnectionStatus status, const std::string message)> statusChangedCb)
+	: statusChanged(statusChangedCb)
+{
+}
 
 void DiagnosticSession::setConnection(std::shared_ptr<Connection> newConnection)
 {
+	commandExecutor = nullptr;
+
 	connection = newConnection;
-
-	std::function<void(const Connection::ConnectionStatus previous, const Connection::ConnectionStatus current)> statusCng =
-		std::bind(&DiagnosticSession::handleStatusChange, this, std::placeholders::_1, std::placeholders::_2);
-
-	connection->registerStatusCallback(statusCng);
-
-	if (statusChanged)
-		statusChanged(Connection::ConnectionStatus::Disconnected);
+	connection->registerStatusCallback(statusChanged);
+	connection->disconnect();
 }
 
 void DiagnosticSession::connect()
 {
-	commandExecutor = std::shared_ptr<CommandExecutor>(new CommandExecutor(this, std::shared_ptr<Connection>(connection), projectRoot));
+	commandExecutor = std::make_shared<CommandExecutor>(connection, [=]() {if (commandsResetStart) commandsResetStart();if (commandsResetEnd) commandsResetEnd();});
 
 	if (connection.get() != nullptr)
 		connection->connect();
@@ -27,20 +29,20 @@ void DiagnosticSession::connect()
 
 void DiagnosticSession::disconnect()
 {
+	commandExecutor = nullptr;
+
 	if (connection.get() != nullptr)
 		connection->disconnect();
-
-	commandExecutor = nullptr;
 }
 
-void DiagnosticSession::openProject(const std::filesystem::path &path)
+void DiagnosticSession::openProject(const std::filesystem::path path)
 {
 	projectRoot = path;
 
+	// Clear commands
 	if (commandsResetStart)
 		commandsResetStart();
-	definedCommands.clear();
-
+	commands.clear();
 	if (commandsResetEnd)
 		commandsResetEnd();
 	
@@ -74,40 +76,43 @@ void DiagnosticSession::openProject(const std::filesystem::path &path)
 		std::filesystem::create_directory(projectRoot / "scripts");
 	}
 
-	if (!std::filesystem::exists(projectRoot / "globals.lua"))
+	if (!std::filesystem::exists(projectRoot / "globals"))
 	{
-		// create global.lua here
-		std::ofstream globalScript(projectRoot / "globals.lua");
+		std::filesystem::create_directory(projectRoot / "globals");
 	}
 }
 
 void DiagnosticSession::saveProject()
 {
-	for (auto &p : definedCommands)
-	{
-		std::ofstream file(projectRoot / "commands" / std::string{ p->name + std::string{ ".json" } }, std::ios::trunc);
-		if (file.is_open())
-		{
-			file << p->toJson();
+	std::unordered_set<std::string> currentNames;
+	for (auto &cmd : commands) currentNames.insert(cmd->name);
+
+	for (auto &file : std::filesystem::directory_iterator(projectRoot / "commands")) {
+		if (file.is_regular_file() && file.path().extension() == ".json") {
+			std::string name = file.path().stem().string();
+			if (!currentNames.count(name)) {
+				std::filesystem::remove(file.path());
+			}
 		}
 	}
 
+	for (auto &file : std::filesystem::directory_iterator(projectRoot / "scripts")) {
+		if (file.is_regular_file() && file.path().extension() == ".lua") {
+			std::string name = file.path().stem().string();
+			if (!currentNames.count(name)) {
+				std::filesystem::remove(file.path());
+			}
+		}
+	}
 
-}
+	for (auto &cmd : commands) {
+		std::ofstream(projectRoot / "commands" / (cmd->name + ".json")) << cmd->toJson();
 
-void DiagnosticSession::setCommandsResetStart(std::function<void()> cb)
-{
-	commandsResetStart = cb;
-}
-
-void DiagnosticSession::setCommandsResetEnd(std::function<void()> cb)
-{
-	commandsResetEnd = cb;
-}
-
-void DiagnosticSession::setStatusChanged(std::function<void(std::optional<Connection::ConnectionStatus>)> statusChanged)
-{
-	this->statusChanged = statusChanged;
+		if (auto sc = dynamic_cast<ScriptCommand *>(cmd.get())) {
+			auto scriptPath = projectRoot / "scripts" / (cmd->name + ".lua");
+			if (!exists(scriptPath)) std::ofstream(scriptPath).close();
+		}
+	}
 }
 
 std::shared_ptr<Command> DiagnosticSession::loadCommandFromJson(std::string input)
@@ -119,15 +124,22 @@ std::shared_ptr<Command> DiagnosticSession::loadCommandFromJson(std::string inpu
 		std::string name = obj["name"];
 		std::size_t repeatInterval = obj["repeatInterval"];
 		std::string type = obj["type"];
+		bool visible = obj["visible"];
 
 		if (type == "RAW")
 		{
 			std::vector<uint8_t> data = obj["data"];
-			return std::shared_ptr<Command>(new RawCommand(name, repeatInterval, data));
+			auto cmd = std::shared_ptr<Command>(new RawCommand(name, repeatInterval, data));
+			cmd->visible = visible;
+			return cmd;
 		}
 		if (type == "SCRIPT")
 		{
-			return std::shared_ptr<Command>(new ScriptCommand(name, repeatInterval));
+			auto cmd = std::make_shared<ScriptCommand>(name, repeatInterval);
+			cmd->mainScript = projectRoot / "scripts" / (name + ".lua");
+			cmd->globalsDirectory = projectRoot / "globals";
+			cmd->visible = visible;
+			return cmd;
 		}
 	}
 	catch (std::exception e)
@@ -142,7 +154,8 @@ void DiagnosticSession::addCommand(std::shared_ptr<Command> c)
 {
 	if (commandsResetStart)
 		commandsResetStart();
-	definedCommands.push_back(c);
+	commands.push_back(c);
+	logger.setSourceVisible(c->name, c->visible);
 	if (commandsResetEnd)
 		commandsResetEnd();
 
@@ -153,20 +166,27 @@ void DiagnosticSession::initialiseScript(std::shared_ptr<Command> c)
 {
 	if (auto p = dynamic_cast<ScriptCommand *>(c.get()))
 	{
-		if (!std::filesystem::exists(projectRoot / "scripts" / std::string{ c->name + ".lua" }))
+		p->mainScript = projectRoot / "scripts" / (c->name + ".lua");
+		p->globalsDirectory = projectRoot / "globals";
+
+		if (!std::filesystem::exists(p->mainScript))
 		{
-			std::ofstream globalScript(projectRoot / "scripts" / std::string{ c->name + ".lua" });
+			std::ofstream scriptFile(p->mainScript);
+			if (scriptFile.is_open())
+			{
+				scriptFile << "function entry()\n\n" << "end\n";
+			}
 		}
 	}
 }
 
 bool DiagnosticSession::editCommand(int idx, std::shared_ptr<Command> &c)
 {
-	if (idx < definedCommands.size())
+	if (idx < commands.size())
 	{
 		if (commandsResetStart)
 			commandsResetStart();
-		definedCommands[idx] = c;
+		commands[idx] = c;
 		if (commandsResetEnd)
 			commandsResetEnd();
 		initialiseScript(c);
@@ -178,11 +198,11 @@ bool DiagnosticSession::editCommand(int idx, std::shared_ptr<Command> &c)
 
 bool DiagnosticSession::removeCommand(int idx)
 {
-	if (idx < definedCommands.size())
+	if (idx < commands.size())
 	{
 		if (commandsResetStart)
 			commandsResetStart();
-		definedCommands.erase(definedCommands.begin() + idx);
+		commands.erase(commands.begin() + idx);
 		if (commandsResetEnd)
 			commandsResetEnd();
 		return true;
@@ -190,34 +210,25 @@ bool DiagnosticSession::removeCommand(int idx)
 	return false;
 }
 
-const std::vector<std::shared_ptr<Command>> &DiagnosticSession::getCommands()
+std::vector<std::shared_ptr<Command>> DiagnosticSession::getCommands()
 {
-	return definedCommands;
+	return commands;
 }
 
-void DiagnosticSession::queueCommand(std::shared_ptr<Command> c)
+void DiagnosticSession::setCommandsResetStart(std::function<void()> cb)
+{
+	commandsResetStart = cb;
+}
+
+void DiagnosticSession::setCommandsResetEnd(std::function<void()> cb)
+{
+	commandsResetEnd = cb;
+}
+
+void DiagnosticSession::queueOrUnqueueCommand(std::shared_ptr<Command> c)
 {
 	if (commandExecutor.get() != nullptr)
 	{
-		commandExecutor->queueCommand(c);
-	}
-}
-
-void DiagnosticSession::handleStatusChange(const Connection::ConnectionStatus status, const Connection::ConnectionStatus current)
-{
-	if (connection.get() == nullptr)
-	{
-		if (statusChanged)
-			statusChanged(std::nullopt);
-
-		//addMessage(std::shared_ptr<Message>(Message(Message::MessageType::Info, "<>")))
-
-		return;
-	}
-	else
-	{
-		if (statusChanged)
-			statusChanged(std::optional<Connection::ConnectionStatus>(current));
-		return;
+		commandExecutor->queueOrUnqueueCommand(c);
 	}
 }

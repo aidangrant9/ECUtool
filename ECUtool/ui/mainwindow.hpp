@@ -18,6 +18,9 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+protected:
+    void closeEvent(QCloseEvent *event) override;
+
 private:
     std::shared_ptr<DiagnosticSession> diagnosticSession{};
     void onNewConnection();
@@ -26,10 +29,14 @@ private:
     void onConnect();
     void onDisconnect();
     void onAddCommand();
+    void onClearLogs();
+    void onSystemLogsChecked(Qt::CheckState checked);
+    void onVisibilityChanged(std::shared_ptr<Command> command);
     void onMessage(std::shared_ptr<Message> m);
     void addMessage(std::shared_ptr<Message> m);
     void onCommandDoubleClicked(const QModelIndex &index);
-    void onConnectionStatusChange(std::optional<Connection::ConnectionStatus>);
+    void onConnectionStatusChange(const Connection::ConnectionStatus status, const std::string message);
+
     QLabel *statusLabel;
     Logger &logger = Logger::instance();
     Ui::MainWindow *ui;

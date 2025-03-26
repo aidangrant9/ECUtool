@@ -27,4 +27,5 @@ struct Message
 	std::string timeString{};
 	std::string source{};
 	std::string msg {};
+	bool system{ false };
 };

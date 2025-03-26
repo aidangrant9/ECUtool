@@ -3,24 +3,22 @@
 #include "VecStream.hpp"
 #include <algorithm>
 
-//#define REMOVE_LEADING_ZERO
-#define NOT_STRICT_TIMING
-
 using namespace std;
 
-KWP2000DL::KWP2000DL(std::string &portName, uint32_t baudRate, bytesize_t byteSize, parity_t parity, stopbits_t stopBits, flowcontrol_t flowControl, bool echoCancellation,
+KLine::KLine(std::string &portName, uint32_t baudRate, bytesize_t byteSize, parity_t parity, stopbits_t stopBits, flowcontrol_t flowControl, bool echoCancellation,
 	AddressingMode addressingMode, uint8_t sourceAddress, uint8_t targetAddress)
 	: connection{Serial("", baudRate, Timeout(), byteSize, parity, stopBits, flowControl)},
 	portName{ portName }, baudRate{ baudRate }, byteSize{ byteSize }, parity{ parity }, stopBits{ stopBits }, echoCancellation {echoCancellation},
 	addressingMode{ addressingMode }, sourceAddress{ sourceAddress }, targetAddress{ targetAddress }
-{}
+{
+}
 
-KWP2000DL::~KWP2000DL()
+KLine::~KLine()
 {
 	disconnect();
 }
 
-void KWP2000DL::connect()
+void KLine::connect()
 {
 	if (connection.isOpen())
 	{
@@ -48,7 +46,7 @@ void KWP2000DL::connect()
 	}
 }
 
-void KWP2000DL::disconnect()
+void KLine::disconnect()
 {
 	if (connection.isOpen())
 	{
@@ -58,26 +56,79 @@ void KWP2000DL::disconnect()
 	changeConnectionStatus(ConnectionStatus::Disconnected);
 }
 
-void KWP2000DL::bindToLua(sol::state &s)
+void KLine::bindToLua(sol::state &s)
 {
-	s.new_usertype<KWP2000DL>("connection",
-		"name", &KWP2000DL::name,
-		"write", &KWP2000DL::write,
-		"writeWithDelay", &KWP2000DL::writeWithDelay,
-		"read", &KWP2000DL::read,
-		"readFrameMatch", &KWP2000DL::readFrameMatch,
-		"busyLoop", [this](uint32_t ms){busyLoop(std::chrono::milliseconds(ms));},
+	s.new_usertype<KLine>("connection",
+		"name", &KLine::name,
+		"write", &KLine::write,
+		"writeWithDelay", &KLine::writeWithDelay,
+		"read", &KLine::read,
+		"readTimeout", &KLine::readWithTimeout,
+		"readFrameMatch", &KLine::readFrameMatch,
+		"sleep", [this](uint32_t ms){busyLoop(std::chrono::milliseconds(ms));},
 		"keyByte", [this]() {return keyByte1.value_or(-1);},
 		"functionalAddressing", [this]() {return addressingMode == AddressingMode::Functional;},
-		"sourceAddress", [this]() {return sourceAddress.value_or(0);},
-		"targetAddress", [this]() {return targetAddress.value_or(0);},
-		"wakeUpPattern", &KWP2000DL::wakeUpPattern,
-		"sendFiveBaudAddress", &KWP2000DL::sendFiveBaudAddress);
+		"sourceAddress", [this]() {return sourceAddress;},
+		"targetAddress", [this]() {return targetAddress;},
+		"wakeUpPattern", &KLine::wakeUpPattern,
+		"sendFiveBaudAddress", &KLine::sendFiveBaudAddress);
 
 	s["connection"] = this;
 }
 
-bool KWP2000DL::hasValidChecksum(const std::vector<uint8_t> &data)
+std::string KLine::getStatusString()
+{
+	if (connectionStatus == ConnectionStatus::Disconnected)
+		return name() + " | Disconnected";
+
+	std::string am = addressingMode == AddressingMode::Physical ? "PHYSICAL" : "FUNCTIONAL";
+	std::string opts{};
+	
+	switch (parity)
+	{
+	case parity_even:
+		opts += "EVEN";
+		break;
+	case parity_odd:
+		opts += "ODD";
+		break;
+	case parity_space:
+		opts += "SPACE";
+		break;
+	case parity_mark:
+		opts += "MARK";
+		break;
+	case parity_none:
+		opts += "NONE";
+		break;
+	}
+
+	switch (stopBits)
+	{
+	case stopbits_one:
+		opts += " | SB 1";
+		break;
+	case stopbits_one_point_five:
+		opts += " | SB 1.5";
+		break;
+	case stopbits_two:
+		opts += " | SB 2";
+		break;
+	}
+
+	std::ostringstream oss;
+	oss << name()
+		<< " | Connected | " << portName
+		<< " | " << baudRate
+		<< " | " << am
+		<< " " << std::uppercase << std::hex << +sourceAddress
+		<< " " << std::uppercase << std::hex << +targetAddress
+		<< " | " << +byteSize << " BIT | " << opts;
+
+	return oss.str();
+}
+
+bool KLine::hasValidChecksum(const std::vector<uint8_t> &data)
 {
 	uint8_t cs = 0x0;
 	for (int i = 0; i < data.size() - 1; i++)
@@ -87,7 +138,7 @@ bool KWP2000DL::hasValidChecksum(const std::vector<uint8_t> &data)
 	return cs == data[data.size() - 1];
 }
 
-void KWP2000DL::wakeUpPattern()
+void KLine::wakeUpPattern()
 {
 	if (!connection.isOpen())
 		return
@@ -98,7 +149,7 @@ void KWP2000DL::wakeUpPattern()
 	busyLoop(std::chrono::milliseconds(25));
 }
 
-void KWP2000DL::sendFiveBaudAddress(uint8_t address)
+void KLine::sendFiveBaudAddress(uint8_t address)
 {
 	if (!connection.isOpen())
 		return;
@@ -136,7 +187,7 @@ void KWP2000DL::sendFiveBaudAddress(uint8_t address)
 	std::this_thread::sleep_for(std::chrono::milliseconds(200 - deviation));
 }
 
-void KWP2000DL::writeWithDelay(const std::vector<uint8_t> msg, const uint32_t msDelay)
+void KLine::writeWithDelay(const std::vector<uint8_t> msg, const uint32_t msDelay)
 {
 	if (!connection.isOpen())
 		return;
@@ -159,10 +210,12 @@ void KWP2000DL::writeWithDelay(const std::vector<uint8_t> msg, const uint32_t ms
 	if(echoCancellation)
 		sentMessages.push_back(msg);
 
+	logWrite(msg);
+
 	return;
 }
 
-std::vector<uint8_t> KWP2000DL::readFrameMatch(const uint32_t timeout, std::function<int(std::vector<uint8_t>)> matchingFn)
+std::vector<uint8_t> KLine::readFrameMatch(const uint32_t timeout, std::function<int(std::vector<uint8_t>)> matchingFn)
 {
 #define BYTE_TOLERANCE 3
 
@@ -213,7 +266,7 @@ std::vector<uint8_t> KWP2000DL::readFrameMatch(const uint32_t timeout, std::func
 		}
 
 		// Run frame matching
-		for (int i = 0; i < std::min(readMessages.size(), static_cast<size_t>(BYTE_TOLERANCE)); i++)
+		for (int i = 0; i <= std::min(readMessages.size(), static_cast<size_t>(BYTE_TOLERANCE)); i++)
 		{
 			int frameLen = matchingFn(std::vector(readMessages.begin() + i, readMessages.end()));
 			if (frameLen > 0 && (i + static_cast<size_t>(frameLen)) <= readMessages.size())
@@ -223,6 +276,8 @@ std::vector<uint8_t> KWP2000DL::readFrameMatch(const uint32_t timeout, std::func
 
 				std::vector<uint8_t> ret = std::vector<uint8_t>(readMessages.begin(), readMessages.begin() + frameLen);
 				readMessages.erase(readMessages.begin(), readMessages.begin() + frameLen);
+
+				logRead(ret);
 				return ret;
 			}
 		}
@@ -231,12 +286,17 @@ std::vector<uint8_t> KWP2000DL::readFrameMatch(const uint32_t timeout, std::func
 	return {};
 }
 
-void KWP2000DL::write(const std::vector<uint8_t> msg)
+void KLine::write(const std::vector<uint8_t> msg)
 {
 	writeWithDelay(msg, 0);
 }
 
-std::vector<uint8_t> KWP2000DL::read()
+std::vector<uint8_t> KLine::read()
+{
+	return readWithTimeout(2000);
+}
+
+std::vector<uint8_t> KLine::readWithTimeout(uint32_t timeout)
 {
 	if (!connection.isOpen())
 	{
@@ -246,9 +306,9 @@ std::vector<uint8_t> KWP2000DL::read()
 
 
 	std::vector<uint8_t> read{};
-	Timeout t = Timeout(0, 3000, 0, 0, 0);
+	Timeout t = Timeout(0, timeout, 0, 0, 0);
 	connection.setTimeout(t);
-	connection.read(read, 1024);
+	connection.read(read, 10000);
 
 	if (echoCancellation && !sentMessages.empty())
 	{
@@ -283,6 +343,8 @@ std::vector<uint8_t> KWP2000DL::read()
 		{
 		}
 	}
+
+	logRead(read);
 
 	return read;
 }

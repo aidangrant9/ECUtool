@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include <functional>
 
+#define BUFFER_SIZE 200
+
 /*
 	Class for handling logging and log filtering between core and GUI
 	All public methods should obtain publicMutex as this is a thread safe interface
@@ -19,15 +21,23 @@ private:
 	Logger(const Logger &) = delete;
 	Logger &operator=(const Logger &) = delete;
 
-	bool isVisible(const Message &msg)
+	bool isVisible(const Message msg)
 	{
 		if (!sourceFilter.contains(msg.source))
 			sourceFilter[msg.source] = true;
 
+		if (msg.system)
+		{
+			if (sourceFilter["__SYSTEM__RESERVED__VISIBILITY"])
+				return true;
+			else
+				return false;
+		}
+
 		return sourceFilter[msg.source];
 	}
 
-	Buffer<std::shared_ptr<Message>> messages{ 1000 };
+	Buffer<std::shared_ptr<Message>> messages{ BUFFER_SIZE };
 	std::mutex publicMutex{};
 	std::unordered_map<std::string, bool> sourceFilter{};
 	std::function<void(std::shared_ptr<Message> msg)> messageCallback{};
@@ -40,7 +50,7 @@ public:
 	}
 
 	// Add messages to the buffer & forward to GUI individually
-	void addMessage(const Message &msg)
+	void addMessage(const Message msg, bool system = false)
 	{
 		std::lock_guard<std::mutex> lock(publicMutex);
 
@@ -48,8 +58,11 @@ public:
 
 		messages.push(m);
 
+		if (system)
+			m->system = true;
+
 		// If its a new source, then we just set it visible
-		if (isVisible(msg))
+		if (isVisible(*m.get()))
 		{
 			if (messageCallback)
 				messageCallback(m);
@@ -57,7 +70,7 @@ public:
 	}
 
 
-	void addErrorMessage(const Message &msg)
+	void addErrorMessage(const Message msg, bool system = false)
 	{
 		std::lock_guard<std::mutex> lock(publicMutex);
 
@@ -66,12 +79,15 @@ public:
 
 		messages.push(m);
 
+		if (system)
+			m->system = true;
+
 		if (messageCallback)
 			messageCallback(m);
 	}
 
 	// Get all messages
-	std::vector<std::shared_ptr<Message>> &getMessages(bool filtered)
+	std::vector<std::shared_ptr<Message>> getMessages(bool filtered)
 	{
 		std::lock_guard<std::mutex> lock(publicMutex);
 
@@ -91,15 +107,37 @@ public:
 		return ret;
 	}
 
-	void setSourceVisible(std::string &source, bool visible)
+	void clearLogs()
+	{
+		std::lock_guard<std::mutex> lock(publicMutex);
+		messages = Buffer<std::shared_ptr<Message>>{ BUFFER_SIZE };
+	}
+
+	void setSourceVisible(std::string source, bool visible)
 	{
 		std::lock_guard<std::mutex> lock(publicMutex);
 		sourceFilter[source] = visible;
 	}
 
-	void setMessageCallback(const std::function<void(std::shared_ptr<Message>)> &cb)
+	void setMessageCallback(const std::function<void(std::shared_ptr<Message>)> cb)
 	{
 		std::lock_guard<std::mutex> lock(publicMutex);
 		messageCallback = cb;
+	}
+
+
+	static std::string stringFromDataVec(std::vector<uint8_t> data)
+	{
+		std::ostringstream o;
+		o << std::hex << std::uppercase << std::setfill('0');
+
+		for (size_t i = 0; i < data.size(); ++i)
+		{
+			o << std::setw(2) << static_cast<int>(data[i]);
+
+			if (i < data.size() - 1)
+				o << " ";
+		}
+		return o.str();
 	}
 };

@@ -9,6 +9,7 @@
 #include "../core/RawCommand.hpp"
 #include <QRegularExpressionValidator>
 #include <QRegularExpression>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -16,23 +17,22 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    // Make DiagnosticSession
-    diagnosticSession = std::make_shared<DiagnosticSession>();
-
     statusLabel = new QLabel(this);
     ui->statusbar->insertWidget(0, statusLabel);
 
-    // Set connection change callback
-    diagnosticSession->setStatusChanged(std::bind(&MainWindow::onConnectionStatusChange, this, std::placeholders::_1));
-    logger.setMessageCallback(std::bind(&MainWindow::onMessage, this, std::placeholders::_1));
+    // Setup callbacks
+    auto statusChangeCb = std::bind(&MainWindow::onConnectionStatusChange, this, std::placeholders::_1, std::placeholders::_2);
+    diagnosticSession = std::make_shared<DiagnosticSession>(statusChangeCb);
 
-    CommandModel *commandView = new CommandModel(diagnosticSession, this);
+    auto messageCb = std::bind(&MainWindow::onMessage, this, std::placeholders::_1);
+    logger.setMessageCallback(messageCb);
+
+    CommandModel *commandModel = new CommandModel(diagnosticSession, this);
     CommandDelegate * delegate = new CommandDelegate(this);
 
     QRegularExpressionValidator *vecStreamValidator = new QRegularExpressionValidator(QRegularExpression("^([0-9A-Fa-f]{2}(\\s*[0-9A-Fa-f]{2})*)$"), this);
     ui->lineEdit->setValidator(vecStreamValidator);
-
-    ui->listView->setModel(commandView);
+    ui->listView->setModel(commandModel);
     ui->listView->setItemDelegate(delegate);
     ui->listView->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->listView->setViewMode(QListView::ListMode);
@@ -44,12 +44,22 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionDisconnect, &QAction::triggered, this, &MainWindow::onDisconnect);
     connect(ui->addCommandButton, &QPushButton::pressed, this, &MainWindow::onAddCommand);
     connect(ui->listView, &QListView::activated, this, &MainWindow::onCommandDoubleClicked);
+    connect(ui->listView, &CommandView::visibilityChanged, this, &MainWindow::onVisibilityChanged);
+    connect(ui->clearButton, &QPushButton::pressed, this, &MainWindow::onClearLogs);
+    connect(ui->systemLogsCheck, &QCheckBox::checkStateChanged, this, &MainWindow::onSystemLogsChecked);
+
+    statusLabel->setStyleSheet("padding: 2px 5px;");
+    statusLabel->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+
+    onSystemLogsChecked(ui->systemLogsCheck->checkState());
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
 }
+
+
 
 void MainWindow::onNewConnection()
 {
@@ -70,9 +80,11 @@ void MainWindow::onOpenProject()
     QFileDialog fileBrowser(this);
     fileBrowser.setFileMode(QFileDialog::FileMode::Directory);
     fileBrowser.setAcceptMode(QFileDialog::AcceptMode::AcceptOpen);
-    fileBrowser.exec();
+    
 
-    diagnosticSession->openProject(std::filesystem::path(fileBrowser.selectedFiles().first().toStdString()));
+    if (fileBrowser.exec() == QDialog::Accepted) {
+        diagnosticSession->openProject(std::filesystem::path(fileBrowser.selectedFiles().first().toStdString()));
+    }
 }
 
 void MainWindow::onSaveProject()
@@ -103,17 +115,50 @@ void MainWindow::onAddCommand()
     }
 }
 
+void MainWindow::onClearLogs()
+{
+    logger.clearLogs();
+    ui->terminalTextEdit->clear();
+}
+
+void MainWindow::onSystemLogsChecked(Qt::CheckState checked)
+{
+    logger.setSourceVisible("__SYSTEM__RESERVED__VISIBILITY", checked == 2);
+    std::vector<std::shared_ptr<Message>> msgs = logger.getMessages(true);
+
+    ui->terminalTextEdit->clear();
+
+    for (std::shared_ptr<Message> &m : msgs)
+    {
+        addMessage(m);
+    }
+}
+
+void MainWindow::onVisibilityChanged(std::shared_ptr<Command> command)
+{
+    logger.setSourceVisible(command->name, command->visible);
+    std::vector<std::shared_ptr<Message>> msgs = logger.getMessages(true);
+
+    ui->terminalTextEdit->clear();
+
+    for (std::shared_ptr<Message> &m : msgs)
+    {
+        addMessage(m);
+    }
+}
+
 void MainWindow::onMessage(std::shared_ptr<Message> m)
 {
     // Handle logger message
     QMetaObject::invokeMethod(this, [=]() {
-        ui->terminalTextEdit->appendPlainText("");
         addMessage(m);
         }, Qt::QueuedConnection);
 }
 
 void MainWindow::addMessage(std::shared_ptr<Message> m)
 {
+    ui->terminalTextEdit->appendPlainText("");
+
     QColor defaultColor = ui->terminalTextEdit->palette().color(QPalette::Text);
 
     QTextCharFormat format = ui->terminalTextEdit->currentCharFormat();
@@ -159,32 +204,43 @@ void MainWindow::addMessage(std::shared_ptr<Message> m)
 void MainWindow::onCommandDoubleClicked(const QModelIndex &index)
 {
     std::shared_ptr<Command> c = index.data().value<std::shared_ptr<Command>>();
-    diagnosticSession->queueCommand(c);
+    diagnosticSession->queueOrUnqueueCommand(c);
 }
 
-void MainWindow::onConnectionStatusChange(std::optional<Connection::ConnectionStatus> status)
+void MainWindow::onConnectionStatusChange(const Connection::ConnectionStatus status, const std::string message)
 {
     QMetaObject::invokeMethod(this, [=]() {
-        if (status == std::nullopt)
+        if (status == Connection::ConnectionStatus::Connected)
         {
             ui->actionConnect->setEnabled(false);
-            ui->actionDisconnect->setEnabled(false);
+            ui->actionDisconnect->setEnabled(true);
         }
         else
         {
-            switch (status.value())
-            {
-            case Connection::ConnectionStatus::Connected:
-                ui->actionConnect->setEnabled(false);
-                ui->actionDisconnect->setEnabled(true);
-                break;
-            case Connection::ConnectionStatus::Disconnected:
-                ui->actionConnect->setEnabled(true);
-                ui->actionDisconnect->setEnabled(false);
-                break;
-            }
-            static std::array<std::string, 3> statusStrings{ "Disconnected", "Connected", "Error" };
-            statusLabel->setText(QString::fromStdString(statusStrings[static_cast<int>(status.value())]));
+            ui->actionConnect->setEnabled(true);
+            ui->actionDisconnect->setEnabled(false);
         }
+        statusLabel->setText(QString::fromStdString(message));
         }, Qt::QueuedConnection);
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this,
+        "Exit Application",
+        "Do you want to save your project before exiting?",
+        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel
+    );
+
+    if (reply == QMessageBox::Save) {
+        onSaveProject();
+        event->accept();
+    }
+    else if (reply == QMessageBox::Discard) {
+        event->accept();
+    }
+    else {
+        event->ignore();
+    }
 }

@@ -6,8 +6,6 @@
 #include <mutex>
 #include <functional>
 #include "sol/sol.hpp"
-#include "DataMessage.hpp"
-#include "../core/Message.hpp"
 #include "../core/Logger.hpp"
 #include "../../serial/include/serial/serial.h"
 
@@ -27,7 +25,9 @@ public:
 		Connected,
 	};
 
-	Connection()          = default;
+	Connection()
+	{}
+
 	virtual ~Connection() = default;
 
 	virtual std::vector<uint8_t> read() = 0;
@@ -36,33 +36,9 @@ public:
 	virtual void connect() = 0;
 	virtual void disconnect() = 0;
 
-	void registerStatusCallback(std::function<void(const ConnectionStatus previous, const ConnectionStatus current)> &cb)
+	void registerStatusCallback(std::function<void(const ConnectionStatus status, const std::string message)> cb)
 	{
 		statusCallback = cb;
-	}
-
-	bool notifyStatusCallback(const ConnectionStatus previous, const ConnectionStatus current)
-	{
-		if (statusCallback)
-		{
-			statusCallback(previous, current);
-			return true;
-		}
-		return false;
-	}
-
-
-	bool changeConnectionStatus(const ConnectionStatus status)
-	{
-		bool r = notifyStatusCallback(connectionStatus, status);
-		this->connectionStatus = status;
-		return r;
-	}
-
-	bool changeConnectionStatus(const ConnectionStatus status, const std::string errorMessage)
-	{
-		logger.addErrorMessage(Message{ errorMessage, name()});
-		return changeConnectionStatus(status);
 	}
 
 	virtual void busyLoop(std::chrono::steady_clock::duration e)
@@ -84,11 +60,56 @@ public:
 			"sleep", [this](uint32_t ms) {busyLoop(std::chrono::milliseconds(ms));});
 	}
 
+	virtual ConnectionStatus getStatus()
+	{
+		notifyStatusCallback(connectionStatus, getStatusString());
+		return connectionStatus;
+	}
+
+
+	virtual void logRead(std::vector<uint8_t> data)
+	{
+		logger.addMessage(Message{ "READ: " + Logger::stringFromDataVec(data), name() }, true);
+	}
+
+
+	virtual void logWrite(std::vector<uint8_t> data)
+	{
+		logger.addMessage(Message{ "WRITE: " + Logger::stringFromDataVec(data), name() }, true);
+	}
 protected:
+	bool notifyStatusCallback(const ConnectionStatus status, const std::string message)
+	{
+		if (statusCallback)
+		{
+			statusCallback(status, message);
+			return true;
+		}
+		return false;
+	}
+
+	virtual std::string getStatusString()
+	{
+		return connectionStatus == ConnectionStatus::Connected ? "Connected" : "Disconnected";
+	}
+
+	bool changeConnectionStatus(const ConnectionStatus status)
+	{
+		connectionStatus = status;
+		bool r = notifyStatusCallback(connectionStatus, getStatusString());
+		return r;
+	}
+
+	bool changeConnectionStatus(const ConnectionStatus status, const std::string errorMessage)
+	{
+		logger.addErrorMessage(Message{ errorMessage, name() });
+		return changeConnectionStatus(status);
+	}
+
 	ConnectionStatus connectionStatus{ ConnectionStatus::Disconnected };
 
 	// Callbacks for GUI
-	std::function<void(const ConnectionStatus previous, const ConnectionStatus current)> statusCallback{};
+	std::function<void(const ConnectionStatus status, const std::string message)> statusCallback{};
 
 	Logger &logger = Logger::instance();
 };

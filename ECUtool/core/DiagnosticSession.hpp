@@ -13,52 +13,47 @@
 #include <nlohmann/json.hpp>
 #include "CommandExecutor.hpp"
 
-class CommandExecutor;
-
 using json = nlohmann::json;
 
 class DiagnosticSession
 {
 public:
-	DiagnosticSession() = default;
+	explicit DiagnosticSession(std::function<void(const Connection::ConnectionStatus status, const std::string message)> statusChangedCb);
 	~DiagnosticSession() = default;
 
+	// Connection methods
 	void setConnection(std::shared_ptr<Connection> newConnection);
 	void connect();
 	void disconnect();
 
-	void openProject(const std::filesystem::path &path);
+	// Project methods
+	void openProject(const std::filesystem::path path);
 	void saveProject();
 
-	void handleStatusChange(const Connection::ConnectionStatus previous, const Connection::ConnectionStatus current);
-
-	// Qt model specific
-	void setCommandsResetStart(std::function<void()> cb);
-	void setCommandsResetEnd(std::function<void()> cb);
-
-	void setStatusChanged(std::function<void(std::optional<Connection::ConnectionStatus>)> statusChanged);
-	
+	// Command methods
 	std::shared_ptr<Command> loadCommandFromJson(std::string input);
 	void addCommand(std::shared_ptr<Command> c);
 	bool editCommand(int idx, std::shared_ptr<Command> &c);
 	bool removeCommand(int idx);
-	const std::vector<std::shared_ptr<Command>> &getCommands();
-	void queueCommand(std::shared_ptr<Command> c);
+	void queueOrUnqueueCommand(std::shared_ptr<Command> c);
 	void initialiseScript(std::shared_ptr<Command> c);
+	std::vector<std::shared_ptr<Command>> getCommands();
+
+	// Qt callback
+	void setCommandsResetStart(std::function<void()> cb);
+	void setCommandsResetEnd(std::function<void()> cb);
 
 private:
-	std::deque<DataMessage<uint8_t>> incomingQueue{};
-	std::mutex incomingMutex{};
-
-
+	// Internal state
 	std::shared_ptr<CommandExecutor> commandExecutor{};
-	std::vector<std::shared_ptr<Command>> definedCommands{};
-	std::mutex messageMutex{};
+	std::shared_ptr<Connection>   connection{};
+	std::vector<std::shared_ptr<Command>> commands{};
 	std::filesystem::path projectRoot{};
 
-	std::shared_ptr<Connection>   connection{};
-
+	// Qt GUI callbacks
 	std::function<void()> commandsResetStart{};
 	std::function<void()> commandsResetEnd{};
-	std::function<void(std::optional<Connection::ConnectionStatus>)> statusChanged{};
+	std::function<void(const Connection::ConnectionStatus status, const std::string message)> statusChanged{};
+
+	Logger &logger = Logger::instance();
 };

@@ -16,10 +16,12 @@ struct Command
 	};
 
 	explicit Command(const std::string &name, const std::size_t repeatInMilliseconds)
-		: name(name), repeatInMilliseconds(repeatInMilliseconds)
+		: name(name), repeatInMilliseconds(repeatInMilliseconds), active(false), visible(true)
 	{}
 
 	virtual ~Command() = default;
+
+	virtual bool run(std::shared_ptr<Connection> connection) = 0;
 	
 	virtual std::string identifier() = 0;
 	virtual std::string toJson() = 0;
@@ -27,4 +29,6 @@ struct Command
 	Type type;
 	std::string name;
 	std::size_t repeatInMilliseconds;
+	bool active;
+	bool visible;
 };

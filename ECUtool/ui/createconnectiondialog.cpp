@@ -23,7 +23,6 @@ CreateConnectionDialog::CreateConnectionDialog(Connection **toConstruct, std::fi
 
     connect(ui->connectionTypeCombo, &QComboBox::currentIndexChanged, this, &CreateConnectionDialog::updateConnectionTypeState);
     connect(ui->applyButton, &QPushButton::pressed, this, &CreateConnectionDialog::onApply);
-    connect(ui->saveButton, &QPushButton::pressed, this, &CreateConnectionDialog::onSave);
 
     updateConnectionTypeState();
     populateKLine();
@@ -55,8 +54,8 @@ void CreateConnectionDialog::populateKLine()
     QRegularExpressionValidator *oneByteValidator = new QRegularExpressionValidator(QRegularExpression("^[A-Fa-f0-9]{1,2}$"), this);
     QRegularExpressionValidator *u64Validator = new QRegularExpressionValidator(QRegularExpression("^(0|[1-9][0-9]{0,19})$"), this);
 
-    ui->addressModeCombo->addItem("Physical", QVariant::fromValue(KWP2000DL::AddressingMode::Physical));
-    ui->addressModeCombo->addItem("Functional", QVariant::fromValue(KWP2000DL::AddressingMode::Functional));
+    ui->addressModeCombo->addItem("Physical", QVariant::fromValue(KLine::AddressingMode::Physical));
+    ui->addressModeCombo->addItem("Functional", QVariant::fromValue(KLine::AddressingMode::Functional));
 
     ui->baudRateEdit->setValidator(u64Validator);
     ui->byteSizeEdit->setValidator(u64Validator);
@@ -76,36 +75,20 @@ void CreateConnectionDialog::onApply()
     }
 }
 
-void CreateConnectionDialog::onSave()
-{
-    switch (ui->connectionTypeCombo->currentData().value<ConnectionTypes>())
-    {
-    case ConnectionTypes::KLine:
-        saveKLine();
-        break;
-    default:
-        break;
-    }
-}
-
 void CreateConnectionDialog::connectKLine()
 {
     std::string portName = ui->portCombo->currentText().toStdString();
     uint32_t baudRate = ui->baudRateEdit->text().toInt(nullptr, 10);
     bytesize_t byteSize = static_cast<bytesize_t>(ui->byteSizeEdit->text().toInt(nullptr, 10));
     serial::parity_t parity = ui->parityCombo->currentData().value<serial::parity_t>();
-    KWP2000DL::AddressingMode addressingMode = ui->addressModeCombo->currentData().value<KWP2000DL::AddressingMode>();
+    KLine::AddressingMode addressingMode = ui->addressModeCombo->currentData().value<KLine::AddressingMode>();
     uint8_t sourceAddress = ui->sourceAddressEdit->text().toInt(nullptr, 16);
     uint8_t targetAddress = ui->targetAddressEdit->text().toInt(nullptr, 16);
     stopbits_t stopBits = ui->stopBitsCombo->currentData().value<serial::stopbits_t>();
 
-    *toConstruct = new KWP2000DL(portName, baudRate, byteSize, parity, stopBits, serial::flowcontrol_none, ui->oneWireCheck->isChecked(), addressingMode, sourceAddress, targetAddress);
+    *toConstruct = new KLine(portName, baudRate, byteSize, parity, stopBits, serial::flowcontrol_none, ui->oneWireCheck->isChecked(), addressingMode, sourceAddress, targetAddress);
 
     this->close();
-}
-
-void CreateConnectionDialog::saveKLine()
-{
 }
 
 void CreateConnectionDialog::updateConnectionTypeState()

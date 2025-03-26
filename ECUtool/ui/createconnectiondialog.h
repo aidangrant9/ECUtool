@@ -27,9 +27,7 @@ private:
     void populateKLine();
     void updateConnectionTypeState();
     void onApply();
-    void onSave();
     void connectKLine();
-    void saveKLine();
 
     std::filesystem::path workDir{};
     Connection **toConstruct = nullptr;
