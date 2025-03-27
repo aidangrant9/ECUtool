@@ -90,7 +90,7 @@ struct ScriptCommand : public Command
 			return false;
 		}
 
-		if (res.get_type() == sol::type::nil)
+		if (res.get_type() == sol::type::none || res.get_type() == sol::type::lua_nil)
 		{
 			return true;
 		}
