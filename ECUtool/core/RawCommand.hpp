@@ -31,8 +31,12 @@ struct RawCommand : public Command
 
 	virtual bool run(std::shared_ptr<Connection> connection)
 	{
+		Logger &logger = Logger::instance();
+
 		connection->write(msg);
-		connection->read();
+		logger.addMessage(Message{ "Req: " + Logger::stringFromDataVec(msg), name});
+		auto ret = connection->read();
+		logger.addMessage(Message{ "Res: " + Logger::stringFromDataVec(ret), name});
 		return true;
 	}
 };

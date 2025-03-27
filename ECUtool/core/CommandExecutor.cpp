@@ -83,8 +83,7 @@ void CommandExecutor::work()
 
 		std::shared_ptr<Command> toRun{};
 		{
-			std::lock_guard<std::mutex> lock(commandQueueMutex);
-
+			commandQueueMutex.lock();
 			// Check repeating commands first
 			auto now = steady_clock::now();
 			for (auto it = repeatingCommands.begin(); it != repeatingCommands.end(); ++it)
@@ -104,6 +103,7 @@ void CommandExecutor::work()
 				toRun = nonRepeatingCommands.front();
 				nonRepeatingCommands.pop_front();
 			}
+			commandQueueMutex.unlock();
 		}
 
 

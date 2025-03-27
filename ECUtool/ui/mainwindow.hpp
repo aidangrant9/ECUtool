@@ -30,6 +30,7 @@ private:
     void onDisconnect();
     void onAddCommand();
     void onClearLogs();
+    void onManualEnter();
     void onSystemLogsChecked(Qt::CheckState checked);
     void onVisibilityChanged(std::shared_ptr<Command> command);
     void onMessage(std::shared_ptr<Message> m);

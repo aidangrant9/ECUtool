@@ -43,6 +43,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionConnect, &QAction::triggered, this, &MainWindow::onConnect);
     connect(ui->actionDisconnect, &QAction::triggered, this, &MainWindow::onDisconnect);
     connect(ui->addCommandButton, &QPushButton::pressed, this, &MainWindow::onAddCommand);
+    connect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::onManualEnter);
     connect(ui->listView, &QListView::activated, this, &MainWindow::onCommandDoubleClicked);
     connect(ui->listView, &CommandView::visibilityChanged, this, &MainWindow::onVisibilityChanged);
     connect(ui->clearButton, &QPushButton::pressed, this, &MainWindow::onClearLogs);
@@ -223,6 +224,15 @@ void MainWindow::onConnectionStatusChange(const Connection::ConnectionStatus sta
         statusLabel->setText(QString::fromStdString(message));
         }, Qt::QueuedConnection);
 }
+
+void MainWindow::onManualEnter()
+{
+    std::vector<uint8_t> toSend = Logger::dataVecFromString(ui->lineEdit->text().toStdString());
+    if (!toSend.empty())
+        diagnosticSession->queueOrUnqueueCommand(std::make_shared<RawCommand>("Terminal", 0, toSend));
+    ui->lineEdit->clear();
+}
+
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {

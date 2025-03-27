@@ -66,12 +66,13 @@ void KLine::bindToLua(sol::state &s)
 		"readTimeout", &KLine::readWithTimeout,
 		"readFrameMatch", &KLine::readFrameMatch,
 		"sleep", [this](uint32_t ms){busyLoop(std::chrono::milliseconds(ms));},
-		"keyByte", [this]() {return keyByte1.value_or(-1);},
 		"functionalAddressing", [this]() {return addressingMode == AddressingMode::Functional;},
 		"sourceAddress", [this]() {return sourceAddress;},
 		"targetAddress", [this]() {return targetAddress;},
 		"wakeUpPattern", &KLine::wakeUpPattern,
-		"sendFiveBaudAddress", &KLine::sendFiveBaudAddress);
+		"sendFiveBaudAddress", &KLine::sendFiveBaudAddress,
+		"setGlobalState", &Connection::setGlobalState,
+		"getGlobalState", &Connection::getGlobalState);
 
 	s["connection"] = this;
 }

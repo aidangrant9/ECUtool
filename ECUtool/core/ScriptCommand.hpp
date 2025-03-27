@@ -90,6 +90,14 @@ struct ScriptCommand : public Command
 			return false;
 		}
 
-		return true;
+		if (res.get_type() == sol::type::nil)
+		{
+			return true;
+		}
+
+		if (res.get_type() == sol::type::boolean) 
+		{
+			return res.get<bool>(0);
+		}
 	}
 };

@@ -57,7 +57,9 @@ public:
 			"name", &Connection::name,
 			"write", [this](std::vector<uint8_t> m) {write(m);},
 			"read", [this](){ read(); },
-			"sleep", [this](uint32_t ms) {busyLoop(std::chrono::milliseconds(ms));});
+			"sleep", [this](uint32_t ms) {busyLoop(std::chrono::milliseconds(ms));},
+			"setGlobalState", &Connection::setGlobalState,
+		    "getGlobalState", &Connection::getGlobalState);
 	}
 
 	virtual ConnectionStatus getStatus()
@@ -77,6 +79,21 @@ public:
 	{
 		logger.addMessage(Message{ "WRITE: " + Logger::stringFromDataVec(data), name() }, true);
 	}
+
+
+	void setGlobalState(std::string key, std::string value)
+	{
+		globalStrings[key] = value;
+	}
+
+	std::string getGlobalState(std::string key)
+	{
+		if (globalStrings.contains(key))
+			return globalStrings[key];
+		else
+			return "";
+	}
+
 protected:
 	bool notifyStatusCallback(const ConnectionStatus status, const std::string message)
 	{
@@ -112,5 +129,8 @@ protected:
 	std::function<void(const ConnectionStatus status, const std::string message)> statusCallback{};
 
 	Logger &logger = Logger::instance();
+
+	// Global Script Value Store
+	std::unordered_map<std::string, std::string> globalStrings{};
 };
 

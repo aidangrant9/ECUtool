@@ -3,6 +3,7 @@
 #include "Connection.hpp"
 #include <thread>
 #include <chrono>
+#include <unordered_map>
 
 using namespace serial;
 
@@ -31,14 +32,9 @@ protected:
 	stopbits_t stopBits{};
 	bool echoCancellation{ true };
 
-
 	AddressingMode addressingMode{};
     uint8_t        sourceAddress{};
 	uint8_t        targetAddress{};
-
-	// Connection parameters
-	std::optional<uint8_t> keyByte1{};
-	std::optional<uint8_t> keyByte2{};
 
 	// Serial port connection
 	Serial connection;
@@ -53,10 +49,9 @@ protected:
 
 	virtual bool hasValidChecksum(const std::vector<uint8_t> &data);
 
-	// Blocking
+	// Blocking methods for script
 	virtual void wakeUpPattern();
 	virtual void sendFiveBaudAddress(uint8_t address);
-
 	virtual void writeWithDelay(const std::vector<uint8_t> msg, const uint32_t msDelay);
 	virtual std::vector<uint8_t> readFrameMatch(const uint32_t timeout, std::function<int(std::vector<uint8_t>)> matchingFn);
 	virtual void write(const std::vector<uint8_t> msg);
