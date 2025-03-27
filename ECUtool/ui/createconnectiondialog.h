@@ -20,7 +20,6 @@ public:
     enum class ConnectionTypes
     {
         KLine,
-        GenKLine,
         Example
     };
 
@@ -28,10 +27,7 @@ private:
     void populateKLine();
     void updateConnectionTypeState();
     void onApply();
-    void onSave();
     void connectKLine();
-    void connectGenKLine();
-    void saveKLine();
 
     std::filesystem::path workDir{};
     Connection **toConstruct = nullptr;

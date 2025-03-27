@@ -8,17 +8,9 @@
 
 struct Message
 {
-	enum class MessageType
-	{
-		Error,
-		Info,
-		Data,
-		Unspecified
-	};
-
-	Message(const MessageType type = MessageType::Unspecified, const std::string &msg = "",
-		const std::string &src = "", long int id = -1, const std::vector<std::pair<std::string, std::string>> &formats = {})
-		: msg(msg), type(type), formats(formats), source(src), id(id)
+	Message(const std::string &msg = "",
+		const std::string &src = "")
+		: msg(msg), source(src)
 	{
 		auto now = std::chrono::system_clock::now();
 		auto now_time_t = std::chrono::system_clock::to_time_t(now);
@@ -34,8 +26,6 @@ struct Message
 
 	std::string timeString{};
 	std::string source{};
-	long int id {-1};
 	std::string msg {};
-	MessageType type { MessageType::Unspecified };
-	std::vector<std::pair<std::string, std::string>> formats {};
+	bool system{ false };
 };

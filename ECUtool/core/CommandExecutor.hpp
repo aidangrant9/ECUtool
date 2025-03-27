@@ -1,35 +1,38 @@
 #pragma once
 
 #include "../communication/Connection.hpp"
-#include "DiagnosticSession.hpp"
 #include "Command.hpp"
 #include <thread>
 #include <filesystem>
 #include <mutex>
 #include <atomic>
 #include <chrono>
+#include <functional>
 
 class DiagnosticSession;
 
 class CommandExecutor
 {
 public:
-	explicit CommandExecutor(DiagnosticSession *session, std::shared_ptr<Connection> connection, std::filesystem::path workpath);
+	explicit CommandExecutor(std::shared_ptr<Connection> connection, std::function<void()> commandStatusChangedCb);
 	~CommandExecutor();
-
-	void queueCommand(std::shared_ptr<Command> c);
-	void runLua(std::filesystem::path file);
+	void queueOrUnqueueCommand(std::shared_ptr<Command> c);
 private:
 	void work();
+	bool removeCommandFromQueues(std::shared_ptr<Command> c);
+	void toggleCommandActive(std::shared_ptr<Command> c, bool active);
 
-	int queueTimeEpsilon = 20;
-	std::filesystem::path workpath{};
+	Logger &logger = Logger::instance();
+
 	std::shared_ptr<Connection> connection{};
-	DiagnosticSession *session{};
-	std::thread workThread{};
-	std::atomic<bool> shouldStop{ false };
-	std::mutex commandMutex{};
-	std::deque<std::pair<std::shared_ptr<Command>,
-		std::chrono::time_point<std::chrono::steady_clock>>> repeatingCommands{};
-	std::deque<std::shared_ptr<Command>> regularCommands  {};
+
+	std::jthread workThread{};
+
+	// Commands waiting to be run
+	std::deque<std::pair<std::shared_ptr<Command>, std::chrono::time_point<std::chrono::steady_clock>>> repeatingCommands{};
+	std::deque<std::shared_ptr<Command>> nonRepeatingCommands{};
+	std::mutex commandQueueMutex{};
+
+	// For GUI to know when we change the status of a command
+	std::function<void()> commandStatusChangedCb{};
 };

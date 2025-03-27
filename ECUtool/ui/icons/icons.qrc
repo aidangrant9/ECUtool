@@ -1,5 +1,8 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/icons">
-    <file>clock.svg</file>
+    <file>hidden.svg</file>
+    <file>visible.svg</file>
+    <file>play.svg</file>
+    <file>stop.svg</file>
 </qresource>
 </RCC>
