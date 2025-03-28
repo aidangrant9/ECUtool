@@ -29,14 +29,18 @@ struct RawCommand : public Command
 		return output.dump(4);
 	}
 
-	virtual bool run(std::shared_ptr<Connection> connection)
+	virtual bool run(std::shared_ptr<Connection> connection, std::string arguments)
 	{
 		Logger &logger = Logger::instance();
 
 		connection->write(msg);
 		logger.addMessage(Message{ "Req: " + Logger::stringFromDataVec(msg), name});
 		auto ret = connection->read();
-		logger.addMessage(Message{ "Res: " + Logger::stringFromDataVec(ret), name});
+
+		if (ret.size() > 0)
+			logger.addMessage(Message{ "Res: " + Logger::stringFromDataVec(ret), name });
+		else
+			logger.addErrorMessage(Message{ "No response", name });
 		return true;
 	}
 };

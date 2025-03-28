@@ -9,14 +9,12 @@
 #include <chrono>
 #include <functional>
 
-class DiagnosticSession;
-
 class CommandExecutor
 {
 public:
 	explicit CommandExecutor(std::shared_ptr<Connection> connection, std::function<void()> commandStatusChangedCb);
 	~CommandExecutor();
-	void queueOrUnqueueCommand(std::shared_ptr<Command> c);
+	void queueOrUnqueueCommand(std::shared_ptr<Command> c, std::string arguments);
 private:
 	void work();
 	bool removeCommandFromQueues(std::shared_ptr<Command> c);
@@ -29,8 +27,8 @@ private:
 	std::jthread workThread{};
 
 	// Commands waiting to be run
-	std::deque<std::pair<std::shared_ptr<Command>, std::chrono::time_point<std::chrono::steady_clock>>> repeatingCommands{};
-	std::deque<std::shared_ptr<Command>> nonRepeatingCommands{};
+	std::deque<std::tuple<std::shared_ptr<Command>, std::chrono::time_point<std::chrono::steady_clock>, std::string>> repeatingCommands{};
+	std::deque<std::pair<std::shared_ptr<Command>, std::string>> nonRepeatingCommands{};
 	std::mutex commandQueueMutex{};
 
 	// For GUI to know when we change the status of a command

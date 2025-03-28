@@ -225,10 +225,10 @@ void DiagnosticSession::setCommandsResetEnd(std::function<void()> cb)
 	commandsResetEnd = cb;
 }
 
-void DiagnosticSession::queueOrUnqueueCommand(std::shared_ptr<Command> c)
+void DiagnosticSession::queueOrUnqueueCommand(std::shared_ptr<Command> c, std::string arguments)
 {
-	if (commandExecutor.get() != nullptr)
+	if (commandExecutor.get() != nullptr && connection->getStatus() == Connection::ConnectionStatus::Connected)
 	{
-		commandExecutor->queueOrUnqueueCommand(c);
+		commandExecutor->queueOrUnqueueCommand(c, arguments);
 	}
 }

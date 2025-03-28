@@ -29,7 +29,7 @@ struct ScriptCommand : public Command
 		return output.dump(4);
 	}
 
-	virtual bool run(std::shared_ptr<Connection> connection)
+	virtual bool run(std::shared_ptr<Connection> connection, std::string arguments)
 	{
 		Logger &logger = Logger::instance();
 
@@ -49,7 +49,7 @@ struct ScriptCommand : public Command
 
 		if (std::filesystem::exists(globalsDirectory))
 		{
-			for (auto &file : std::filesystem::directory_iterator(globalsDirectory))
+			for (auto &file : std::filesystem::recursive_directory_iterator(globalsDirectory))
 			{
 				if (file.is_regular_file() && file.path().extension() == ".lua")
 				{
@@ -82,7 +82,7 @@ struct ScriptCommand : public Command
 			return false;
 		}
 
-		sol::protected_function_result res = entryFunc();
+		sol::protected_function_result res = entryFunc(arguments);
 		if (!res.valid())
 		{
 			sol::error err = res;
@@ -90,14 +90,11 @@ struct ScriptCommand : public Command
 			return false;
 		}
 
-		if (res.get_type() == sol::type::none || res.get_type() == sol::type::lua_nil)
-		{
-			return true;
-		}
-
 		if (res.get_type() == sol::type::boolean) 
 		{
 			return res.get<bool>(0);
 		}
+
+		return true;
 	}
 };

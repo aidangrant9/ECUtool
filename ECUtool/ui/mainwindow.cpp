@@ -30,8 +30,6 @@ MainWindow::MainWindow(QWidget *parent)
     CommandModel *commandModel = new CommandModel(diagnosticSession, this);
     CommandDelegate * delegate = new CommandDelegate(this);
 
-    QRegularExpressionValidator *vecStreamValidator = new QRegularExpressionValidator(QRegularExpression("^([0-9A-Fa-f]{2}(\\s*[0-9A-Fa-f]{2})*)$"), this);
-    ui->lineEdit->setValidator(vecStreamValidator);
     ui->listView->setModel(commandModel);
     ui->listView->setItemDelegate(delegate);
     ui->listView->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -205,7 +203,7 @@ void MainWindow::addMessage(std::shared_ptr<Message> m)
 void MainWindow::onCommandDoubleClicked(const QModelIndex &index)
 {
     std::shared_ptr<Command> c = index.data().value<std::shared_ptr<Command>>();
-    diagnosticSession->queueOrUnqueueCommand(c);
+    diagnosticSession->queueOrUnqueueCommand(c, "");
 }
 
 void MainWindow::onConnectionStatusChange(const Connection::ConnectionStatus status, const std::string message)
@@ -227,9 +225,56 @@ void MainWindow::onConnectionStatusChange(const Connection::ConnectionStatus sta
 
 void MainWindow::onManualEnter()
 {
-    std::vector<uint8_t> toSend = Logger::dataVecFromString(ui->lineEdit->text().toStdString());
-    if (!toSend.empty())
-        diagnosticSession->queueOrUnqueueCommand(std::make_shared<RawCommand>("Terminal", 0, toSend));
+    std::string input = ui->lineEdit->text().toStdString();
+    std::istringstream iss(input);
+    std::vector<std::string> tokens;
+    std::string token;
+
+    while (iss >> token)
+    {
+        tokens.push_back(token);
+    }
+
+    if (tokens.empty())
+    {
+        ui->lineEdit->clear();
+        return;
+    }
+
+    std::vector<std::shared_ptr<Command>> commands = diagnosticSession->getCommands();
+    bool found = false;
+
+    for (auto &cmd : commands)
+    {
+        if (cmd->name == tokens[0])
+        {
+            found = true;
+            std::string arguments;
+            for (size_t i = 1; i < tokens.size(); ++i)
+            {
+                if (i > 1)
+                    arguments += " ";
+                arguments += tokens[i];
+            }
+
+            diagnosticSession->queueOrUnqueueCommand(cmd, arguments);
+            break;
+        }
+    }
+
+    if (!found)
+    {
+        std::vector<uint8_t> toSend = Logger::dataVecFromString(input);
+        if (!toSend.empty())
+        {
+            diagnosticSession->queueOrUnqueueCommand(std::make_shared<RawCommand>("Terminal", 0, toSend), "");
+        }
+        else
+        {
+            logger.addErrorMessage(Message{ "Couldn't parse command", "Terminal" }, false);
+        }
+    }
+
     ui->lineEdit->clear();
 }
 

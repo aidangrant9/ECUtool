@@ -305,47 +305,47 @@ std::vector<uint8_t> KLine::readWithTimeout(uint32_t timeout)
 		return {};
 	}
 
-
-	std::vector<uint8_t> read{};
-	Timeout t = Timeout(0, timeout, 0, 0, 0);
+	Timeout t = Timeout(0, 1, 0, 0, 0);
 	connection.setTimeout(t);
-	connection.read(read, 10000);
+	chrono::time_point<chrono::steady_clock> start = chrono::steady_clock::now();
 
-	if (echoCancellation && !sentMessages.empty())
+	while (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - start).count() < timeout)
 	{
-		std::vector<uint8_t> toCancel = sentMessages[0];
+		connection.read(readMessages, 1024);
 
-		try
+		// Run echo cancellation
+		if (echoCancellation && !sentMessages.empty())
 		{
-			for (int i = 0; i < read.size(); i++)
+			const std::vector<uint8_t> &toCancel = sentMessages.front();
+			if (!toCancel.empty())
 			{
-				if (read[i] == toCancel[0])
+				for (size_t i = 0; i < readMessages.size(); i++)
 				{
-					bool matches = true;
-					for (int j = 0; j < toCancel.size(); j++)
+					if (i + toCancel.size() <= readMessages.size() && readMessages[i] == toCancel[0])
 					{
-						if (toCancel[j] != read[i + j])
+						bool matches = true;
+						for (size_t j = 0; j < toCancel.size(); j++)
 						{
-							matches = false;
+							if (readMessages[i + j] != toCancel[j])
+							{
+								matches = false;
+								break;
+							}
+						}
+
+						if (matches)
+						{
+							readMessages.erase(readMessages.begin(), readMessages.begin() + i + toCancel.size());
+							sentMessages.erase(sentMessages.begin());
 							break;
 						}
-					}
-
-					if (matches)
-					{
-						read.erase(read.begin(), read.begin() + i + toCancel.size());
-						sentMessages.erase(sentMessages.begin() + 0);
-						break;
 					}
 				}
 			}
 		}
-		catch (...)
-		{
-		}
 	}
 
-	logRead(read);
+	logRead(readMessages);
 
-	return read;
+	return readMessages;
 }

@@ -19,42 +19,42 @@ CommandExecutor::~CommandExecutor()
 	workThread.join();
 }
 
-void CommandExecutor::queueOrUnqueueCommand(std::shared_ptr<Command> c)
+void CommandExecutor::queueOrUnqueueCommand(std::shared_ptr<Command> c, std::string arguments)
 {
 	std::lock_guard<std::mutex> lock(commandQueueMutex);
-	
-	// Command already in queue
+
 	if (removeCommandFromQueues(c))
 	{
 		toggleCommandActive(c, false);
 		return;
 	}
 
-	// Command not already queued
 	toggleCommandActive(c, true);
 
 	if (c->repeatInMilliseconds > 0)
-		repeatingCommands.push_back(std::make_pair<>(c, std::chrono::steady_clock::now() - std::chrono::milliseconds(c->repeatInMilliseconds)));
+	{
+		repeatingCommands.push_back({ c, steady_clock::now() - milliseconds(c->repeatInMilliseconds), arguments });
+	}
 	else
-		nonRepeatingCommands.push_back(c);
+	{
+		nonRepeatingCommands.push_back({ c, arguments });
+	}
 }
 
 bool CommandExecutor::removeCommandFromQueues(std::shared_ptr<Command> c)
 {
-	for (auto it = repeatingCommands.begin(); it != repeatingCommands.end(); it++)
+	for (auto it = repeatingCommands.begin(); it != repeatingCommands.end(); ++it)
 	{
-		// Command already queued
-		if ((*it).first.get() == c.get())
+		if (std::get<0>(*it).get() == c.get())
 		{
 			repeatingCommands.erase(it);
 			return true;
 		}
 	}
 
-	for (auto it = nonRepeatingCommands.begin(); it != nonRepeatingCommands.end(); it++)
+	for (auto it = nonRepeatingCommands.begin(); it != nonRepeatingCommands.end(); ++it)
 	{
-		// Command already queued
-		if ((*it).get() == c.get())
+		if (it->first.get() == c.get())
 		{
 			nonRepeatingCommands.erase(it);
 			return true;
@@ -72,61 +72,65 @@ void CommandExecutor::toggleCommandActive(std::shared_ptr<Command> c, bool activ
 
 void CommandExecutor::work()
 {
-	std::stop_token st = workThread.get_stop_token();
+    std::stop_token st = workThread.get_stop_token();
 
-	while (true)
-	{
-		if (st.stop_requested())
-		{
-			return;
-		}
+    while (true)
+    {
+        if (st.stop_requested())
+        {
+            return;
+        }
 
-		std::shared_ptr<Command> toRun{};
-		{
-			commandQueueMutex.lock();
-			// Check repeating commands first
-			auto now = steady_clock::now();
-			for (auto it = repeatingCommands.begin(); it != repeatingCommands.end(); ++it)
-			{
-				auto elapsed = duration_cast<milliseconds>(now - it->second);
-				if (elapsed.count() > it->first->repeatInMilliseconds)
-				{
-					it->second = now;  // Update last run time
-					toRun = it->first;
-					break;
-				}
-			}
+        std::shared_ptr<Command> toRun{};
+        std::string argsToPass{};
 
-			// If no repeating command ready, check non-repeating
-			if (!toRun && !nonRepeatingCommands.empty())
-			{
-				toRun = nonRepeatingCommands.front();
-				nonRepeatingCommands.pop_front();
-			}
-			commandQueueMutex.unlock();
-		}
+        {
+            commandQueueMutex.lock();
+            auto now = steady_clock::now();
 
+            // Check repeating commands first.
+            for (auto it = repeatingCommands.begin(); it != repeatingCommands.end(); ++it)
+            {
+                auto elapsed = duration_cast<milliseconds>(now - std::get<1>(*it));
+                if (elapsed.count() > std::get<0>(*it)->repeatInMilliseconds)
+                {
+                    // Update last run time and select command to run.
+                    std::get<1>(*it) = now;
+                    toRun = std::get<0>(*it);
+                    argsToPass = std::get<2>(*it);
+                    break;
+                }
+            }
 
-		// If we have a command to run
-		if (toRun)
-		{
-			bool successful = toRun->run(connection);
-			if (!successful)
-			{
-				commandQueueMutex.lock();
-				removeCommandFromQueues(toRun);
-				commandQueueMutex.unlock();
-				toggleCommandActive(toRun, false);
-			}
+            // If no repeating command is ready, check non-repeating commands.
+            if (!toRun && !nonRepeatingCommands.empty())
+            {
+                toRun = nonRepeatingCommands.front().first;
+                argsToPass = nonRepeatingCommands.front().second;
+                nonRepeatingCommands.pop_front();
+            }
+            commandQueueMutex.unlock();
+        }
 
-			if (toRun->repeatInMilliseconds <= 0)
-			{
-				toggleCommandActive(toRun, false);
-			}
-		}
+        // If we have a command to run, execute it with the provided arguments.
+        if (toRun && connection->getStatus() == Connection::ConnectionStatus::Connected)
+        {
+            bool successful = toRun->run(connection, argsToPass);
+            if (!successful)
+            {
+                std::lock_guard<std::mutex> lock(commandQueueMutex);
+                removeCommandFromQueues(toRun);
+                toggleCommandActive(toRun, false);
+            }
 
+            // If command is non-repeating, mark it as inactive.
+            if (toRun->repeatInMilliseconds <= 0)
+            {
+                toggleCommandActive(toRun, false);
+            }
+        }
 
-		// Avoid busy looping
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-	}
+        // Small sleep to avoid busy waiting.
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
 }

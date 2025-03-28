@@ -21,7 +21,7 @@ struct Command
 
 	virtual ~Command() = default;
 
-	virtual bool run(std::shared_ptr<Connection> connection) = 0;
+	virtual bool run(std::shared_ptr<Connection> connection, std::string arguments) = 0;
 	
 	virtual std::string identifier() = 0;
 	virtual std::string toJson() = 0;

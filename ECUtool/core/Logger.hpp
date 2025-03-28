@@ -145,14 +145,22 @@ public:
 	{
 		input.erase(std::remove(input.begin(), input.end(), ' '), input.end());
 		std::vector<uint8_t> ret{};
-		if (input.length() % 2 != 0)
+
+		try
 		{
-			input = input;
+			if (input.length() % 2 != 0)
+			{
+				input = input;
+			}
+			for (int i = 0; i < input.length(); i += 2)
+			{
+				std::string byte = input.substr(i, 2);
+				ret.push_back(std::stoi(byte, nullptr, 16));
+			}
 		}
-		for (int i = 0; i < input.length(); i += 2)
+		catch (std::invalid_argument)
 		{
-			std::string byte = input.substr(i, 2);
-			ret.push_back(std::stoi(byte, nullptr, 16));
+			return {};
 		}
 
 		return ret;

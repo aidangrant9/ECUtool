@@ -35,7 +35,7 @@ public:
 	void addCommand(std::shared_ptr<Command> c);
 	bool editCommand(int idx, std::shared_ptr<Command> &c);
 	bool removeCommand(int idx);
-	void queueOrUnqueueCommand(std::shared_ptr<Command> c);
+	void queueOrUnqueueCommand(std::shared_ptr<Command> c, std::string arguments);
 	void initialiseScript(std::shared_ptr<Command> c);
 	std::vector<std::shared_ptr<Command>> getCommands();
 
