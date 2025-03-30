@@ -142,7 +142,7 @@ bool KLine::hasValidChecksum(const std::vector<uint8_t> &data)
 void KLine::wakeUpPattern()
 {
 	if (!connection.isOpen())
-		return
+		return;
 
 	connection.setBreak(true);
 	busyLoop(std::chrono::milliseconds(25));
