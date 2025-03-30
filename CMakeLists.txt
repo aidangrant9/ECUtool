@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.23)
 
-project(ECUtool VERSION 0.2.0
+project(ECUtool VERSION 1.0.0
                 DESCRIPTION "A GUI application for reverse-engineering ECUs"
                 LANGUAGES CXX)
 
