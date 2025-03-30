@@ -57,7 +57,7 @@ public:
 			"name", &Connection::name,
 			"write", [this](std::vector<uint8_t> m) {write(m);},
 			"read", [this](){ read(); },
-			"sleep", [this](uint32_t ms) {busyLoop(std::chrono::milliseconds(ms));},
+			"sleep", [this](Connection* ts, int ms){busyLoop(std::chrono::milliseconds(ms));},
 			"setGlobalState", &Connection::setGlobalState,
 		    "getGlobalState", &Connection::getGlobalState);
 	}

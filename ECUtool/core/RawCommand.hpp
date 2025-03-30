@@ -29,7 +29,7 @@ struct RawCommand : public Command
 		return output.dump(4);
 	}
 
-	virtual bool run(std::shared_ptr<Connection> connection, std::string arguments)
+	virtual bool run(std::shared_ptr<Connection> connection, std::string arguments, const std::stop_token &st)
 	{
 		Logger &logger = Logger::instance();
 

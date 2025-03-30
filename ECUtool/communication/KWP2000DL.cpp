@@ -65,7 +65,7 @@ void KLine::bindToLua(sol::state &s)
 		"read", &KLine::read,
 		"readTimeout", &KLine::readWithTimeout,
 		"readFrameMatch", &KLine::readFrameMatch,
-		"sleep", [this](uint32_t ms){busyLoop(std::chrono::milliseconds(ms));},
+		"sleep", [this](KLine* ts, int ms){busyLoop(std::chrono::milliseconds(ms));},
 		"functionalAddressing", [this]() {return addressingMode == AddressingMode::Functional;},
 		"sourceAddress", [this]() {return sourceAddress;},
 		"targetAddress", [this]() {return targetAddress;},

@@ -29,7 +29,7 @@ struct ScriptCommand : public Command
 		return output.dump(4);
 	}
 
-	virtual bool run(std::shared_ptr<Connection> connection, std::string arguments)
+	virtual bool run(std::shared_ptr<Connection> connection, std::string arguments, const std::stop_token &st)
 	{
 		Logger &logger = Logger::instance();
 
@@ -43,6 +43,32 @@ struct ScriptCommand : public Command
 		);
 
 		lua["log"] = &logger;
+
+		lua_State *L = lua.lua_state();
+
+		struct StopTokenState 
+		{
+			const std::stop_token &token;
+			explicit StopTokenState(const std::stop_token &t) : token(t) {}
+		};
+
+		void *stateMemory = lua_newuserdata(L, sizeof(StopTokenState));
+		new (stateMemory) StopTokenState(st);
+		lua_setfield(L, LUA_REGISTRYINDEX, "STOP_TOKEN_STATE");
+
+		lua_sethook(L, [](lua_State *L, lua_Debug *ar) {
+			(void)ar;
+
+			lua_getfield(L, LUA_REGISTRYINDEX, "STOP_TOKEN_STATE");
+			if (lua_isuserdata(L, -1)) {
+				StopTokenState *state = static_cast<StopTokenState *>(lua_touserdata(L, -1));
+
+				if (state && state->token.stop_requested()) {
+					luaL_error(L, "Script execution interrupted");
+				}
+			}
+			lua_pop(L, 1);
+			}, LUA_MASKCOUNT, 5);
 
 
 		connection->bindToLua(lua);

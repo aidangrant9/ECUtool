@@ -115,7 +115,7 @@ void CommandExecutor::work()
         // If we have a command to run, execute it with the provided arguments.
         if (toRun && connection->getStatus() == Connection::ConnectionStatus::Connected)
         {
-            bool successful = toRun->run(connection, argsToPass);
+            bool successful = toRun->run(connection, argsToPass, st);
             if (!successful)
             {
                 std::lock_guard<std::mutex> lock(commandQueueMutex);
