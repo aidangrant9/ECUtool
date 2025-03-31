@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
+#include <stop_token>
 
 struct Command
 {
