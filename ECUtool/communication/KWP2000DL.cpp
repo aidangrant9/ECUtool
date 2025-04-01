@@ -166,26 +166,22 @@ void KLine::sendFiveBaudAddress(uint8_t address)
 			address |= 0b10000000; // Add bit to make odd parity
 	}
 
-	std::chrono::time_point t1 = std::chrono::steady_clock::now();
 	connection.setBreak(true);
-	std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Start bit
+	busyLoop(std::chrono::milliseconds(200));
 
 	// Send address byte LSB first
 	for (int i = 0; i < 8; i++)
 	{
-		int deviation = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t1).count() - (200 + (200 * (i)));
 		uint8_t toSend = (address >> i) & 0b1;
 		if (toSend)
 			connection.setBreak(false);
 		else
 			connection.setBreak(true);
-		std::this_thread::sleep_for(std::chrono::milliseconds(200 - deviation));
+		busyLoop(std::chrono::milliseconds(200));
 	}
 
-	int deviation = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t1).count() - 1800;
-	// Send stop bit
 	connection.setBreak(false);
-	std::this_thread::sleep_for(std::chrono::milliseconds(200 - deviation));
+	busyLoop(std::chrono::milliseconds(200));
 }
 
 void KLine::writeWithDelay(const std::vector<uint8_t> msg, const uint32_t msDelay)
