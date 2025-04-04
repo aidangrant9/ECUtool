@@ -189,12 +189,14 @@ void KLine::writeWithDelay(const std::vector<uint8_t> msg, const uint32_t msDela
 	if (!connection.isOpen())
 		return;
 
+	readMessages.clear();
+	sentMessages.clear();
+
+	connection.flush();
+
 	if (msg.size() < 1)
 		return;
 
-	// Reset connection state to await response
-	readMessages.clear();
-	sentMessages.clear();
 
 	for (int i = 0; i < msg.size() - 1; i++)
 	{
@@ -214,7 +216,7 @@ void KLine::writeWithDelay(const std::vector<uint8_t> msg, const uint32_t msDela
 
 std::vector<uint8_t> KLine::readFrameMatch(const uint32_t timeout, std::function<int(std::vector<uint8_t>)> matchingFn)
 {
-#define BYTE_TOLERANCE 3
+#define BYTE_TOLERANCE 10
 
 	if (!connection.isOpen())
 	{
@@ -279,6 +281,8 @@ std::vector<uint8_t> KLine::readFrameMatch(const uint32_t timeout, std::function
 			}
 		}
 	}
+
+	logRead(readMessages);
 
 	return {};
 }
