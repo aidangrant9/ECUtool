@@ -191,7 +191,6 @@ void KLine::writeWithDelay(const std::vector<uint8_t> msg, const uint32_t msDela
 
 	readMessages.clear();
 	sentMessages.clear();
-
 	connection.flush();
 
 	if (msg.size() < 1)
