@@ -14,6 +14,8 @@ struct RawCommand : public Command
 		type = Type::Raw;
 	}
 
+	std::vector<uint8_t> msg{};
+
 	std::string identifier() override { return std::string{ "RAW" }; }
 
 	std::string toJson() override
@@ -22,11 +24,23 @@ struct RawCommand : public Command
 		output["name"] = name;
 		output["repeatInterval"] = repeatInMilliseconds;
 		output["type"] = identifier();
+		output["visible"] = visible;
 		output["data"] = msg;
 		return output.dump(4);
 	}
-	
-	~RawCommand() = default;
 
-	std::vector<uint8_t> msg{};
+	virtual bool run(std::shared_ptr<Connection> connection, std::string arguments, const std::stop_token &st)
+	{
+		Logger &logger = Logger::instance();
+
+		connection->write(msg);
+		logger.addMessage(Message{ "Req: " + Logger::stringFromDataVec(msg), name});
+		auto ret = connection->read();
+
+		if (ret.size() > 0)
+			logger.addMessage(Message{ "Res: " + Logger::stringFromDataVec(ret), name });
+		else
+			logger.addErrorMessage(Message{ "No response", name });
+		return true;
+	}
 };

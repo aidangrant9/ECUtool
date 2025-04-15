@@ -1,4 +1,1 @@
-
-if(WIN32)
-target_sources(ecutoolapp PRIVATE KLineWindows.cpp KLineWindows.hpp DataMessage.hpp)
-endif()
+target_sources(ecutoolapp PRIVATE KWP2000DL.hpp KWP2000DL.cpp)
