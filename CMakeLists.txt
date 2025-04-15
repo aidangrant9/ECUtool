@@ -6,9 +6,6 @@ project(ECUtool VERSION 1.0.0
 
 set(CMAKE_OSX_ARCHITECTURES "arm64")
 
-set(BUILD_SHARED_LIBS OFF)
-
-
 include(vcpkg/scripts/buildsystems/vcpkg.cmake)
 
 
