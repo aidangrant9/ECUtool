@@ -1,0 +1,6 @@
+{
+    "name": "TesterPresent",
+    "repeatInterval": 5000,
+    "type": "SCRIPT",
+    "visible": true
+}

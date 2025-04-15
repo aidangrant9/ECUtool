@@ -1,0 +1,6 @@
+{
+    "name": "StartDiagnosticSession",
+    "repeatInterval": 0,
+    "type": "SCRIPT",
+    "visible": true
+}
