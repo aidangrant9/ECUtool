@@ -1,3 +1,10 @@
+# About
+
+ECUtool is a GUI-based tool allowing you to define commands to communicate with various ECUs using different protocols.
+Currently, protocols using the K-Line are most supported. Example projects are included [here](./ecutool_projects).
+
+![image](mainwindow.png)
+
 # Prerequisites
 
 - Qt must be installed and Qt bin in system PATH
